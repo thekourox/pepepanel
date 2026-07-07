@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tor VPN Dashboard - 3xUI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<!-- UNIFIED GATEWAY TOP NAVIGATION INJECTION -->
+<div style="background-color: #1f2937; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; border-bottom: 2px solid #374151; margin-bottom: 20px;">
+    <div style="font-weight: bold; font-size: 16px;">
+        <span style="color: #007bff;">Unified</span> Gateway
+    </div>
+    <div>
+        <a href="/surfshark/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #374151; border-radius: 4px; margin-right: 10px; font-size: 14px;">Switch to Surfshark</a>
+        <a href="/tor/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #374151; border-radius: 4px; margin-right: 10px; font-size: 14px;">Switch to Tor</a>
+        <a href="/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #007bff; border-radius: 4px; font-weight: bold; font-size: 14px;">Dashboard</a>
+        <a href="/logout" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #dc3545; border-radius: 4px; margin-left: 10px; font-size: 14px;">Logout</a>
+    </div>
+</div>
+<!-- END GATEWAY NAVIGATION INJECTION -->
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div class="dashboard-container">
+        <header class="glass-header">
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h1>Tor Checker - 3x-UI</h1>
+            </div>
+            <div class="controls">
+                <button id="btn-settings" class="btn btn-secondary" title="Resource Settings"><i class="fa-solid fa-gear"></i></button>
+                <div class="input-group">
+                    <label for="max-countries">Max Countries:</label>
+                    <input type="number" id="max-countries" value="20" min="1" max="190" style="width: 60px; padding: 0.3rem; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-right: 1rem;">
+                </div>
+                <button id="btn-start" class="btn btn-primary"><i class="fa-solid fa-play"></i> Start</button>
+                <button id="btn-stop" class="btn btn-danger"><i class="fa-solid fa-stop"></i> Stop</button>
+                <button id="btn-inject-modal" class="btn btn-secondary"><i class="fa-solid fa-cloud-arrow-up"></i> Inject Pasargard</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="status-panel glass-panel">
+                <div class="status-header">
+                    <h2><i class="fa-solid fa-network-wired"></i> Global Status</h2>
+                    <span id="badge-status" class="badge badge-idle">IDLE</span>
+                </div>
+                <div class="status-content">
+                    <p id="discovery-msg">Ready to start.</p>
+                    <div class="progress-bar-container">
+                        <div id="discovery-progress" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="instances-panel glass-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-server"></i> Proxy Instances</h2>
+                    <span id="instance-count" class="count-badge">0 / 190</span>
+                </div>
+                <div class="table-container">
+                    <table id="instances-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">COUNTRY</th>
+                                <th style="width: 15%;">SOCKS PORT</th>
+                                <th style="width: 25%;">IP LOCATION</th>
+                                <th style="width: 15%;">PING (TCP)</th>
+                                <th style="width: 30%;">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="instances-body">
+                            <!-- Rows will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="instances-panel glass-panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-layer-group"></i> Manage Group A (Lifecycle)</h2>
+                </div>
+                <div class="table-container" style="padding: 15px; display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <button id="btn-enable-group" class="btn btn-primary" style="width: 100%;"><i class="fa-solid fa-play"></i> Enable Group A</button>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <button id="btn-disable-group" class="btn btn-secondary" style="width: 100%;"><i class="fa-solid fa-pause"></i> Disable Group A</button>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <button id="btn-cleanup-group" class="btn btn-danger" style="width: 100%; background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545;"><i class="fa-solid fa-trash-can"></i> Clean Up (Bulk Delete)</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Resource Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content glass-card">
+            <span class="close-btn">&times;</span>
+            <h2><i class="fa-solid fa-sliders"></i> Resource Management</h2>
+            
+            <div class="setting-group">
+                <label for="set-ping">Ping Interval (Seconds) <span class="setting-hint">Higher = Less CPU</span></label>
+                <input type="number" id="set-ping" value="30" min="5" max="300">
+            </div>
+
+            <div class="setting-group">
+                <label for="set-ram">Tor RAM Limit (MB) <span class="setting-hint">Per Node (e.g. 15)</span></label>
+                <input type="number" id="set-ram" value="15" min="2" max="100">
+            </div>
+
+            <div class="setting-group">
+                <label for="set-bw">Bandwidth Limit (KB/s) <span class="setting-hint">0 = Unlimited</span></label>
+                <input type="number" id="set-bw" value="0" min="0" max="10000">
+            </div>
+
+            <div class="setting-group">
+                <label for="set-workers">Scheduler Workers <span class="setting-hint">0 = Auto (Based on CPU)</span></label>
+                <input type="number" id="set-workers" value="0" min="0" max="32">
+            </div>
+
+            <div class="setting-group">
+                <label for="set-host-country">Host Server Location <span class="setting-hint">e.g. de, nl, fr (Overrides Auto-IP)</span></label>
+                <input type="text" id="set-host-country" placeholder="Leave empty for auto-detect">
+            </div>
+
+            <div class="setting-group" style="margin-top: 10px;">
+                <label>Preferred Countries 
+                    <button id="btn-scan-countries" class="btn btn-secondary" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; margin-left: 10px;">
+                        <i class="fa-solid fa-satellite-dish"></i> Live Scan
+                    </button>
+                </label>
+                <div id="countries-list" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <!-- Checkboxes injected here -->
+                    <span style="color: var(--text-muted); font-size: 0.8rem; grid-column: span 2;">Click 'Live Scan' to discover online nodes...</span>
+                </div>
+            </div>
+            
+            <button id="btn-save-settings" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Save Settings</button>
+        </div>
+    </div>
+
+    <!-- Pasargard Inject Modal -->
+    <div id="inject-modal" class="modal">
+        <div class="modal-content glass-card">
+            <span class="close-inject-btn close-btn">&times;</span>
+            <h2><i class="fa-solid fa-cloud-arrow-up"></i> Inject to Pasargard</h2>
+            
+            <div class="setting-group">
+                <label for="pasargard-url">Pasargard URL <span class="setting-hint">e.g. https://panel.example.com</span></label>
+                <input type="text" id="pasargard-url" placeholder="https://panel.example.com">
+            </div>
+
+            <div class="setting-group">
+                <label for="pasargard-token">Admin API Token <span class="setting-hint">Bearer Token</span></label>
+                <input type="password" id="pasargard-token" placeholder="eyJhbG...">
+            </div>
+
+            <div class="setting-group">
+                <label for="pasargard-core">Target Core <span class="setting-hint">Select Core</span></label>
+                <div style="display: flex; gap: 8px;">
+                    <select id="pasargard-core" style="flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: #fff;">
+                        <option value="">-- Load Cores First --</option>
+                    </select>
+                    <button id="btn-load-cores" class="btn btn-secondary" style="padding: 0.5rem 1rem;"><i class="fa-solid fa-server"></i> Load</button>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label for="pasargard-template">Template Inbound <span class="setting-hint">Select Inbound to clone</span></label>
+                <div style="display: flex; gap: 8px;">
+                    <select id="pasargard-template" style="flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: #fff;">
+                        <option value="">-- Load Inbounds First --</option>
+                    </select>
+                    <button id="btn-load-inbounds" class="btn btn-secondary" style="padding: 0.5rem 1rem;"><i class="fa-solid fa-rotate"></i> Load</button>
+                </div>
+            </div>
+            
+            <button id="btn-execute-inject" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Execute Injection</button>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-content">
+            <i class="fa-solid fa-circle-info"></i>
+            <span id="toast-msg">Notification</span>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+stem
+requests
+pysocks
+rich
+psutil
+fastapi
+uvicorn
+httpx

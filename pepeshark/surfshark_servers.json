@@ -1,0 +1,62 @@
+[
+  {
+    "country": "United States",
+    "location": "Ashburn",
+    "endpoint": "us-ash.prod.surfshark.com",
+    "publicKey": "aB1cD2eF3gH4iJ5kL6mN7oP8qR9sT0uV1wX2yZ3aB4c="
+  },
+  {
+    "country": "United States",
+    "location": "New York",
+    "endpoint": "us-nyc.prod.surfshark.com",
+    "publicKey": "bC2dE3fG4hI5jK6lM7nO8pQ9rS0tU1vW2xY3zA4bC5d="
+  },
+  {
+    "country": "United Kingdom",
+    "location": "London",
+    "endpoint": "uk-lon.prod.surfshark.com",
+    "publicKey": "cDeF3gH4iJ5kL6mN7oP8qR9sT0uV1wX2yZ3aB4cD5eF="
+  },
+  {
+    "country": "Germany",
+    "location": "Frankfurt",
+    "endpoint": "de-fra.prod.surfshark.com",
+    "publicKey": "dEfG4hI5jK6lM7nO8pQ9rS0tU1vW2xY3zA4bC5dE6fG="
+  },
+  {
+    "country": "Netherlands",
+    "location": "Amsterdam",
+    "endpoint": "nl-ams.prod.surfshark.com",
+    "publicKey": "eFgH4iJ5kL6mN7oP8qR9sT0uV1wX2yZ3aB4cD5eF7gH="
+  },
+  {
+    "country": "Canada",
+    "location": "Toronto",
+    "endpoint": "ca-tor.prod.surfshark.com",
+    "publicKey": "fGhI5jK6lM7nO8pQ9rS0tU1vW2xY3zA4bC5dE6fG8hI="
+  },
+  {
+    "country": "France",
+    "location": "Paris",
+    "endpoint": "fr-par.prod.surfshark.com",
+    "publicKey": "gHiJ5kL6mN7oP8qR9sT0uV1wX2yZ3aB4cD5eF7gH9iJ="
+  },
+  {
+    "country": "Japan",
+    "location": "Tokyo",
+    "endpoint": "jp-tok.prod.surfshark.com",
+    "publicKey": "hIjK6lM7nO8pQ9rS0tU1vW2xY3zA4bC5dE6fG8hI0jK="
+  },
+  {
+    "country": "Singapore",
+    "location": "Singapore",
+    "endpoint": "sg-sng.prod.surfshark.com",
+    "publicKey": "iJkL6mN7oP8qR9sT0uV1wX2yZ3aB4cD5eF7gH9iJ1kL="
+  },
+  {
+    "country": "Australia",
+    "location": "Sydney",
+    "endpoint": "au-syd.prod.surfshark.com",
+    "publicKey": "jKlM7nO8pQ9rS0tU1vW2xY3zA4bC5dE6fG8hI0jK2lM="
+  }
+]

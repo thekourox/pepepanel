@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PepeShark</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<!-- UNIFIED GATEWAY TOP NAVIGATION INJECTION -->
+<div style="background-color: #1f2937; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; border-bottom: 2px solid #374151; margin-bottom: 20px;">
+    <div style="font-weight: bold; font-size: 16px;">
+        <span style="color: #007bff;">Unified</span> Gateway
+    </div>
+    <div>
+        <a href="/surfshark/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #374151; border-radius: 4px; margin-right: 10px; font-size: 14px;">Switch to Surfshark</a>
+        <a href="/tor/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #374151; border-radius: 4px; margin-right: 10px; font-size: 14px;">Switch to Tor</a>
+        <a href="/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #007bff; border-radius: 4px; font-weight: bold; font-size: 14px;">Dashboard</a>
+        <a href="/logout" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #dc3545; border-radius: 4px; margin-left: 10px; font-size: 14px;">Logout</a>
+    </div>
+</div>
+<!-- END GATEWAY NAVIGATION INJECTION -->
+    <div class="background-animation"></div>
+    <div class="container">
+        <header>
+            <h1>PepeShark - WireGuard Bridge</h1>
+            <p>Seamlessly bridge Surfshark WireGuard with your Xray cores.</p>
+        </header>
+
+        <main>
+            <section class="card settings-section">
+                <h2>0. PasarGuard API Settings</h2>
+                <div class="form-group">
+                    <label for="pasarguardUrl">Panel URL</label>
+                    <input type="text" id="pasarguardUrl" placeholder="http://127.0.0.1:8000" value="http://127.0.0.1:8000">
+                </div>
+                <div class="form-group">
+                    <label for="pasarguardToken">Admin API Token</label>
+                    <input type="password" id="pasarguardToken" placeholder="Enter your PasarGuard Admin Token" required>
+                </div>
+            </section>
+
+            <section class="card config-section">
+                <h2>1. Core Configuration</h2>
+                <div class="form-group">
+                    <label for="privateKey">Surfshark Master Private Key</label>
+                    <input type="password" id="privateKey" placeholder="Enter your WireGuard Private Key" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="wgAddress">WireGuard Local Address</label>
+                    <input type="text" id="wgAddress" placeholder="10.14.0.2/16 (Check your Surfshark config)" value="10.14.0.2/16" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="coreSelector">Target Pasargard Core</label>
+                    <select id="coreSelector" disabled>
+                        <option value="">Loading Cores...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="inboundSelector">Template Inbound (To Clone)</label>
+                    <select id="inboundSelector" disabled>
+                        <option value="">Select a Core First...</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="card locations-section">
+                <h2>2. Select Locations</h2>
+                <p class="subtitle">Choose the Surfshark nodes you want to activate for this core.</p>
+                <div class="locations-toolbar" style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                    <input type="text" id="locationSearch" placeholder="Search locations..." style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
+                    <button type="button" id="selectNonTor" style="padding: 8px 12px; font-size: 0.9em; background: var(--surface-color); border: 1px solid var(--primary-color); color: var(--text-color); border-radius: 4px; cursor: pointer;">Select Non-Tor</button>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="selectAllLocations">
+                        <span>Select All</span>
+                    </label>
+                </div>
+                <div id="locationsList" class="locations-grid">
+                    <!-- Populated via JS -->
+                    <div class="loading">Loading Surfshark locations...</div>
+                </div>
+            </section>
+
+            <section class="card group-section">
+                <h2>3. Subscription Group Manager</h2>
+                <p class="subtitle">Create custom subscription bundles targeting the selected Node/Core.</p>
+                <div class="form-group">
+                    <label for="groupName">Group Name (e.g., VIP Bundle)</label>
+                    <input type="text" id="groupName" placeholder="Enter Group Name">
+                </div>
+            </section>
+
+            <section class="card lifecycle-section">
+                <h2>4. Manage Surfshark (Group B)</h2>
+                <p class="subtitle">Control the lifecycle of injected Group B nodes. Ensure a Core is selected above.</p>
+                <div class="lifecycle-controls" style="display: flex; gap: 10px; align-items: center;">
+                    <button id="toggleGroupBBtn" class="primary-btn" style="background: var(--text-muted);" disabled>Disable Group B</button>
+                    <button id="enableGroupBBtn" class="primary-btn" style="background: var(--success);" disabled>Enable Group B</button>
+                    <button id="cleanupGroupBBtn" class="primary-btn" style="background: var(--error, #e74c3c);" disabled>Clean Up (Delete All)</button>
+                </div>
+            </section>
+
+            <div class="action-container" style="display: flex; gap: 1rem; justify-content: center;">
+                <button id="injectBtn" class="primary-btn" disabled>Inject Native WireGuard</button>
+                <button id="createGroupBtn" class="primary-btn" style="background: var(--success);" disabled>Create Custom Group</button>
+            </div>
+            
+            <div id="statusMessage" class="status-message hidden"></div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

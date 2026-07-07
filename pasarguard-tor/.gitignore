@@ -1,0 +1,5 @@
+manager_logs.txt
+tor_data/
+tor/
+docs/
+__pycache__/
