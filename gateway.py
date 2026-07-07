@@ -3,7 +3,8 @@ import requests
 from flask import Flask, request, session, redirect, url_for, render_template_string, Response
 from werkzeug.security import check_password_hash
 
-app = Flask(__name__)
+# Disable default static folder so we can proxy /static/
+app = Flask(__name__, static_folder=None)
 app.secret_key = "super_secret_gateway_key_change_in_production"
 DB_PATH = "auth.db"
 
@@ -100,8 +101,7 @@ def logout():
 
 @app.before_request
 def require_login():
-    # Allow login, static files, and require auth for everything else
-    if not session.get("logged_in") and request.endpoint != "login" and not request.path.startswith('/static'):
+    if not session.get("logged_in") and request.endpoint != "login":
         return redirect(url_for("login"))
 
 @app.route("/")
@@ -120,6 +120,23 @@ def proxy_tor(path):
 def proxy_surfshark(path):
     return _proxy_request("http://127.0.0.1:8088", request.path.replace("/surfshark", "", 1) or "/", request)
 
+# Catch-all proxy for /static/ and /api/ based on Referer header
+@app.route("/<path:path>", methods=["GET", "POST", "PUT", "DELETE"])
+def proxy_shared(path):
+    referer = request.headers.get("Referer", "")
+    if "/tor/" in referer:
+        base_url = "http://127.0.0.1:54322"
+    elif "/surfshark/" in referer:
+        base_url = "http://127.0.0.1:8088"
+    else:
+        # If no referer is available, try to route based on path hints or default to Tor
+        if "surfshark" in path:
+            base_url = "http://127.0.0.1:8088"
+        else:
+            base_url = "http://127.0.0.1:54322"
+
+    return _proxy_request(base_url, "/" + path, request)
+
 def _proxy_request(base_url, path, req):
     url = f"{base_url}{path}"
     if req.query_string:
@@ -129,7 +146,7 @@ def _proxy_request(base_url, path, req):
     resp = requests.request(
         method=req.method,
         url=url,
-        headers={key: value for (key, value) in req.headers if key != 'Host'},
+        headers={key: value for (key, value) in req.headers if key.lower() != 'host'},
         data=req.get_data(),
         cookies=req.cookies,
         allow_redirects=False)
