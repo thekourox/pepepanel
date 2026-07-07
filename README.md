@@ -1,89 +1,90 @@
-# PepePanel Unified Gateway
+# درگاه یکپارچه PepePanel (Unified Gateway)
 
-PepePanel Unified Gateway is a centralized authentication portal and reverse-proxy that brings together two independent microservices (**Pasarguard-Tor** and **Pepeshark**) under a single, secure interface.
+درگاه یکپارچه PepePanel یک پورتال احراز هویت متمرکز و Reverse-Proxy است که دو میکروسرویس مستقل (**Pasarguard-Tor** و **Pepeshark**) را تحت یک رابط کاربری واحد و امن گرد هم می‌آورد.
 
-Instead of manually navigating to different ports (e.g., `54322` and `8088`), this gateway exposes a unified dashboard on **Port 5000**. It handles user authentication via a local SQLite database and intelligently proxies HTTP traffic (including API calls and static assets) to the respective backend panels without requiring any backend modifications to the core applications.
+به جای اینکه مجبور باشید پورت‌های مختلف (مثلاً `54322` و `8088`) را به صورت دستی در مرورگر وارد کنید، این درگاه یک داشبورد یکپارچه روی **پورت 5000** در اختیار شما قرار می‌دهد. این درگاه احراز هویت کاربران را از طریق یک دیتابیس محلی SQLite مدیریت کرده و ترافیک HTTP (شامل درخواست‌های API و فایل‌های استاتیک CSS/JS) را به صورت کاملاً هوشمند به پنل‌های مربوطه هدایت (Proxy) می‌کند، **بدون اینکه نیازی به دستکاری کدهای اصلی و بک‌اند این برنامه‌ها باشد.**
 
-## 🚀 Features
+## 🚀 ویژگی‌ها
 
-- **Centralized Authentication:** Protect both sub-panels behind a single, secure login page.
-- **Smart Reverse Proxy:** Seamlessly routes `/tor/` and `/surfshark/` traffic to their respective backend ports.
-- **Referer-based Asset Routing:** Automatically routes absolute paths (like `/static/...` or `/api/...`) to the correct microservice based on the browser's `Referer` header.
-- **Unified Navigation:** Injected top-navigation bar in both panels for easy switching.
-- **Cross-Platform Runners:** Includes `start_all.py` for Windows/macOS and a full `systemd` manager script for Linux servers.
+- **احراز هویت متمرکز:** محافظت از هر دو پنل در پشت یک صفحه لاگین امن.
+- **پراکسی هوشمند (Smart Reverse Proxy):** هدایت یکپارچه ترافیک مسیرهای `/tor/` و `/surfshark/` به پورت‌های بک‌اند مربوطه.
+- **مسیریابی بر اساس Referer:** این سیستم به صورت هوشمند مسیرهای Absolute (مثل `/static/` یا `/api/`) را با خواندن هدر `Referer` مرورگر شناسایی کرده و به میکروسرویس درست هدایت می‌کند.
+- **ناوبری (Navigation) یکپارچه:** یک نوار ناوبری (منوی بالای صفحه) به HTML هر دو پنل تزریق شده تا سوئیچ کردن بین آن‌ها با یک کلیک انجام شود.
+- **اجرا روی سیستم‌عامل‌های مختلف:** دارای فایل `start_all.py` برای اجرای سریع در ویندوز/مک و همچنین یک اسکریپت مانیجر کامل با `systemd` برای سرورهای لینوکس.
 
 ---
 
-## 📁 Directory Structure
+## 📁 ساختار پوشه‌ها
 
 ```text
 pepepanel/
-├── pasarguard-tor/          # Core logic for the Tor proxy interface (Port 54322)
-├── pepeshark/               # Core logic for the Surfshark interface (Port 8088)
-├── gateway.py               # The main Flask Reverse-Proxy & Auth Gateway
-├── pepeshark-cli.py         # CLI tool for generating and managing admin accounts
-├── start_all.py             # Windows/Dev runner script to launch all 3 services
-├── pepepanel_manager.sh     # Linux deployment & manager script (systemd)
-└── auth.db                  # SQLite database (auto-generated) storing admin credentials
+├── pasarguard-tor/          # کدهای اصلی رابط کاربری پراکسی تور (پورت 54322)
+├── pepeshark/               # کدهای اصلی رابط کاربری Surfshark (پورت 8088)
+├── gateway.py               # اسکریپت اصلی درگاه (Reverse-Proxy و Auth) با Flask
+├── pepeshark-cli.py         # ابزار خط فرمان برای ساخت و مدیریت اکانت ادمین
+├── start_all.py             # اسکریپت اجرای همزمان ۳ سرویس روی ویندوز (محیط توسعه)
+├── pepepanel_manager.sh     # اسکریپت نصب و مدیریت جامع برای سرور لینوکس (systemd)
+└── auth.db                  # دیتابیس لاگین ادمین (به صورت خودکار ساخته می‌شود)
 ```
 
 ---
 
-## 🐧 Linux Deployment (Production)
+## 🐧 نصب و راه‌اندازی در سرور لینوکس (محیط Production)
 
-If you are deploying this on a Linux server (Ubuntu/Debian), a comprehensive bash manager is provided.
+اگر قصد دارید این سیستم را روی سرور لینوکس (مثل اوبونتو یا دبیان) نصب کنید، یک اسکریپت منیجر کامل به زبان Bash برای شما آماده شده است.
 
-### 1. Make the script executable
+### ۱. دادن دسترسی اجرایی به اسکریپت
+ابتدا ترمینال را در پوشه پروژه باز کنید و دستور زیر را بزنید:
 ```bash
 chmod +x pepepanel_manager.sh
 ```
 
-### 2. Run the Interactive Manager
-You must run the manager as root:
+### ۲. اجرای منیجر تعاملی
+توجه داشته باشید که اسکریپت حتماً باید با دسترسی روت اجرا شود:
 ```bash
 sudo ./pepepanel_manager.sh
 ```
 
-### 3. Manager Options
-When the menu appears, you have the following options:
-- **`1` (Install All Services):** This will execute the sub-installers for Tor and Surfshark, install Python dependencies, create a `systemd` service (`pepepanel-gateway.service`), and start the gateway in the background on Port 5000.
-- **`2` (Manage Admins):** Opens the CLI to create a new admin username and password. You can choose to auto-generate a highly secure password or set your own.
-- **`3` (View System Logs):** Tails the live `journalctl` logs of the unified gateway so you can monitor traffic and errors in real-time.
-- **`4` (Restart Gateway):** Restarts the `systemd` service if you've made changes.
+### ۳. گزینه‌های منیجر
+پس از اجرای اسکریپت، منویی با گزینه‌های زیر باز می‌شود:
+- **`1` (Install All Services):** این گزینه ابتدا اسکریپت نصب تور و Surfshark را اجرا می‌کند، پیش‌نیازهای پایتون را نصب کرده، و در نهایت یک سرویس Systemd به نام `pepepanel-gateway.service` ساخته و درگاه را در بک‌گراند روی پورت 5000 روشن می‌کند.
+- **`2` (Manage Admins):** ابزار CLI را باز می‌کند تا بتوانید نام کاربری و رمز عبور ادمین بسازید. می‌توانید خودتان رمز بگذارید یا اجازه دهید یک رمز بسیار امن برایتان Generate شود.
+- **`3` (View System Logs):** لاگ‌های زنده درگاه را از طریق `journalctl` به شما نشان می‌دهد تا ترافیک و خطاها را لحظه‌ای مانیتور کنید.
+- **`4` (Restart Gateway):** اگر تغییری در سیستم دادید، سرویس اصلی را ریستارت می‌کند.
 
 ---
 
-## 🪟 Windows / Desktop Usage (Development)
+## 🪟 استفاده در ویندوز (محیط Development یا استفاده شخصی)
 
-If you are running this locally on a Windows machine for development or local usage:
+اگر می‌خواهید پنل را روی کامپیوتر ویندوزی خودتان روشن کنید:
 
-### 1. Install Requirements
-Make sure you have Python 3 installed. Then install the gateway dependencies:
+### ۱. نصب پیش‌نیازها
+مطمئن شوید پایتون ۳ نصب است. سپس پکیج‌های زیر را نصب کنید:
 ```cmd
 pip install flask requests werkzeug
 ```
 
-### 2. Create an Admin User
-Run the CLI tool to generate your login credentials:
+### ۲. ساخت اکانت ادمین
+ابزار CLI را اجرا کنید تا یوزرنیم و پسورد لاگین ساخته شود:
 ```cmd
 python pepeshark-cli.py
 ```
-Select option `1` to add an admin, and follow the prompts.
+گزینه `1` (Add new admin user) را انتخاب کرده و مراحل را طی کنید.
 
-### 3. Start the Services
-Run the unified python launcher. This script spawns the Gateway, Tor Panel, and Surfshark Panel simultaneously in the background of your terminal.
+### ۳. اجرای همزمان سرویس‌ها
+حالا فقط کافیست اسکریپت رانر را اجرا کنید. این اسکریپت هر ۳ سرویس (درگاه ورودی، پنل Tor و پنل Surfshark) را همزمان با هم روشن می‌کند:
 ```cmd
 python start_all.py
 ```
 
-### 4. Access the Dashboard
-Open your web browser and navigate to:
+### ۴. ورود به پنل
+مرورگر خود را باز کرده و آدرس زیر را وارد کنید:
 **http://127.0.0.1:5000**
 
-To stop the services, simply press `Ctrl+C` in the terminal running `start_all.py`.
+برای خاموش کردن همه پنل‌ها کافیست در ترمینالی که `start_all.py` در حال اجراست کلیدهای `Ctrl+C` را فشار دهید.
 
 ---
 
-## ⚠️ Notes on Architecture
-- **Zero-Touch Backend:** The backend logic of `pasarguard-tor` and `pepeshark` remains entirely black-boxed. The gateway only interfaces with them via HTTP proxying.
-- **HTML Injection:** The only change made to the sub-projects is a tiny HTML snippet injected after the `<body>` tag in their respective `index.html` files. This snippet provides the "Unified Gateway" top navigation bar.
+## ⚠️ نکته مهم درباره معماری پروژه
+- **بدون تغییر در بک‌اند:** منطق و بک‌اند اصلی ابزارهای `pasarguard-tor` و `pepeshark` مانند یک جعبه سیاه (Black-box) دست‌نخورده باقی مانده‌اند. درگاه تنها وظیفه Proxy کردن درخواست‌ها را دارد.
+- **تزریق HTML:** تنها تغییری که در پروژه‌های اصلی داده شده، اضافه شدن چند خط کد HTML در فایل `index.html` آن‌هاست تا منوی ناوبریِ درگاهِ یکپارچه در بالای صفحه به کاربران نمایش داده شود.
