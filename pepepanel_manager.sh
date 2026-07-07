@@ -43,7 +43,7 @@ install_services() {
     fi
 
     # Install Python requirements for Gateway
-    pip3 install flask requests werkzeug
+    pip3 install flask requests werkzeug --break-system-packages --ignore-installed
 
     # Create systemd service for gateway
     cat > "$GATEWAY_SERVICE_FILE" <<EOF
