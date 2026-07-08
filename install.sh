@@ -42,7 +42,7 @@ fi
 # 2. Variables
 INSTALL_DIR="/opt/pepepanel"
 # ⚠️ REPLACE THIS URL WITH YOUR ACTUAL MIRROR SERVER URL
-MIRROR_URL="http://31.59.103.248/pepepanel.tar.gz"
+MIRROR_URL="http://31.77.147.87/pepepanel.tar.gz"
 
 echo -e "\n${YELLOW}[*] Installing system dependencies (curl, wget, python3, pip)...${NC}"
 apt-get update -y -q > /dev/null 2>&1
