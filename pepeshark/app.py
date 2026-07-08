@@ -256,6 +256,8 @@ async def inject_to_pasargard(
                 new_name_remark = f"{loc.country}{location_part} {flag}"
                 new_host_payload = dict(template_host)
                 new_host_payload.pop("id", None)
+                new_host_payload.pop("created_at", None)
+                new_host_payload.pop("updated_at", None)
                 new_host_payload["name"] = new_name_remark
                 new_host_payload["remark"] = new_name_remark
                 new_host_payload["inbound_tag"] = cloned_tag
@@ -285,9 +287,11 @@ async def inject_to_pasargard(
                     raise HTTPException(status_code=400, detail=f"Failed to create host: {create_host_resp.text}")
             
             # 6. Restart core at the end
-            await client.post(
-                f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}/restart",
-                headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"}
+            await client.put(
+                f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}?restart_nodes=true",
+                headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
+                json=core_data,
+                timeout=10.0
             )
             
             return {"status": "success", "message": "Injected successfully via Wireproxy and restarted core!"}
