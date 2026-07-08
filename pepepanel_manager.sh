@@ -93,6 +93,8 @@ fetch_pg_token() {
     echo "====================================="
     echo "     Pasarguard Token Fetcher        "
     echo "====================================="
+    read -p "Enter Pasarguard IP/Host (Default 127.0.0.1): " pg_host
+    pg_host=${pg_host:-127.0.0.1}
     read -p "Enter Pasarguard Port (Default 54321): " pg_port
     pg_port=${pg_port:-54321}
     read -p "Enter Pasarguard Username: " pg_user
@@ -107,7 +109,7 @@ import json
 import ssl
 
 def fetch(proto):
-    url = f'{proto}://127.0.0.1:$pg_port/api/admin/token'
+    url = f'{proto}://$pg_host:$pg_port/api/admin/token'
     data = urllib.parse.urlencode({'username': '$pg_user', 'password': '$pg_pass'}).encode('utf-8')
     req = urllib.request.Request(url, data=data)
     ctx = ssl.create_default_context()
