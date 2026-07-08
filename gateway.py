@@ -151,7 +151,7 @@ def _proxy_request(base_url, path, req):
             data=req.get_data(),
             cookies=req.cookies,
             allow_redirects=False,
-            timeout=10)
+            timeout=120)
         
         # Exclude headers that cause issues with Flask's response mechanism
         excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
