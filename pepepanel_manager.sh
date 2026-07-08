@@ -104,24 +104,33 @@ fetch_pg_token() {
 import urllib.request
 import urllib.parse
 import json
-import sys
+import ssl
 
-url = 'http://127.0.0.1:$pg_port/api/admin/token'
-data = urllib.parse.urlencode({'username': '$pg_user', 'password': '$pg_pass'}).encode('utf-8')
-req = urllib.request.Request(url, data=data)
-try:
-    with urllib.request.urlopen(req, timeout=5) as response:
+def fetch(proto):
+    url = f'{proto}://127.0.0.1:$pg_port/api/admin/token'
+    data = urllib.parse.urlencode({'username': '$pg_user', 'password': '$pg_pass'}).encode('utf-8')
+    req = urllib.request.Request(url, data=data)
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    with urllib.request.urlopen(req, context=ctx, timeout=5) as response:
         if response.status == 200:
             resp_data = json.loads(response.read().decode())
-            token = resp_data.get('access_token')
-            if token:
-                print(f'\n\033[1;32m[+] SUCCESS! Your Admin API Token:\033[0m\n\n{token}\n')
-            else:
-                print('\n[!] Logged in, but token not found in response.')
-except urllib.error.HTTPError as e:
-    print(f'\n\033[1;31m[!] Login failed. Check your username/password. (HTTP {e.code})\033[0m')
-except Exception as e:
-    print(f'\n\033[1;31m[!] Connection error: {e}. Is Pasarguard running on port $pg_port?\033[0m')
+            return resp_data.get('access_token')
+    return None
+
+try:
+    token = fetch('https')
+    if token: print(f'\n\033[1;32m[+] SUCCESS! Your Admin API Token:\033[0m\n\n{token}\n')
+except Exception:
+    try:
+        token = fetch('http')
+        if token: print(f'\n\033[1;32m[+] SUCCESS! Your Admin API Token:\033[0m\n\n{token}\n')
+        else: print('\n[!] Logged in, but token not found in response.')
+    except urllib.error.HTTPError as e:
+        print(f'\n\033[1;31m[!] Login failed. Check your username/password. (HTTP {e.code})\033[0m')
+    except Exception as e:
+        print(f'\n\033[1;31m[!] Connection error: {e}. Is Pasarguard running on port $pg_port?\033[0m')
 "
 }
 
