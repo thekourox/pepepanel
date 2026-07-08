@@ -88,6 +88,45 @@ view_logs() {
     journalctl -u pepepanel-gateway.service -f
 }
 
+uninstall_services() {
+    echo ""
+    echo "====================================="
+    echo "       UNINSTALLING PEPEPANEL        "
+    echo "====================================="
+    read -p "Are you sure you want to completely remove PepePanel and all its services? (y/n): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "Uninstallation cancelled."
+        return
+    fi
+
+    echo "Stopping and disabling services..."
+    systemctl stop pepepanel-gateway.service tor-checker.service pepeshark.service 2>/dev/null
+    systemctl disable pepepanel-gateway.service tor-checker.service pepeshark.service 2>/dev/null
+
+    echo "Removing systemd service files..."
+    rm -f /etc/systemd/system/pepepanel-gateway.service
+    rm -f /etc/systemd/system/tor-checker.service
+    rm -f /etc/systemd/system/pepeshark.service
+    systemctl daemon-reload
+
+    echo "Removing global 'pepeshark' alias..."
+    rm -f /usr/local/bin/pepeshark
+
+    read -p "Do you also want to DELETE all application files in $APP_DIR? (y/n): " confirm_files
+    if [[ "$confirm_files" == "y" || "$confirm_files" == "Y" ]]; then
+        echo "Deleting application files..."
+        rm -rf "$APP_DIR"
+        echo "====================================="
+        echo "PepePanel has been completely uninstalled."
+        echo "====================================="
+        exit 0
+    else
+        echo "====================================="
+        echo "Services uninstalled. Files were kept in $APP_DIR."
+        echo "====================================="
+    fi
+}
+
 while true; do
     echo ""
     echo "====================================="
@@ -97,16 +136,18 @@ while true; do
     echo "2. Manage Admins (Add/View users)"
     echo "3. View System Logs (Gateway)"
     echo "4. Restart Gateway Service"
-    echo "5. Exit"
+    echo "5. Uninstall PepePanel"
+    echo "6. Exit"
     echo "====================================="
-    read -p "Select an option [1-5]: " option
+    read -p "Select an option [1-6]: " option
 
     case $option in
         1) install_services ;;
         2) manage_admins ;;
         3) view_logs ;;
         4) systemctl restart pepepanel-gateway.service; echo "Gateway Restarted." ;;
-        5) echo "Exiting..."; exit 0 ;;
+        5) uninstall_services ;;
+        6) echo "Exiting..."; exit 0 ;;
         *) echo "Invalid option." ;;
     esac
 done

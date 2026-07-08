@@ -42,7 +42,7 @@ fi
 # 2. Variables
 INSTALL_DIR="/opt/pepepanel"
 # ⚠️ REPLACE THIS URL WITH YOUR ACTUAL MIRROR SERVER URL
-MIRROR_URL="https://YOUR_MIRROR_SERVER_DOMAIN/pepepanel.tar.gz"
+MIRROR_URL="http://31.59.103.248/pepepanel.tar.gz"
 
 echo -e "\n${YELLOW}[*] Installing system dependencies (curl, wget, python3, pip)...${NC}"
 apt-get update -y -q > /dev/null 2>&1
@@ -56,8 +56,12 @@ cd /tmp
 
 # Download the tar.gz and extract
 if curl -sLf "$MIRROR_URL" -o pepepanel.tar.gz; then
-    tar -xzf pepepanel.tar.gz -C "$INSTALL_DIR" --strip-components=1
+    tar -xzf pepepanel.tar.gz -C "$INSTALL_DIR"
     rm pepepanel.tar.gz
+    
+    # Fix Windows CRLF line endings on all extracted scripts
+    find "$INSTALL_DIR" -type f \( -name "*.sh" -o -name "*.py" \) -exec sed -i 's/\r$//' {} +
+    
     echo -e "${GREEN}[+] Download and extraction successful.${NC}"
 else
     echo -e "${RED}[!] Failed to download from the mirror server.${NC}"
@@ -135,7 +139,7 @@ cd $INSTALL_DIR
 EOF
 chmod +x /usr/local/bin/pepeshark
 
-SERVER_IP=\$(curl -s http://checkip.amazonaws.com)
+SERVER_IP=$(curl -s http://checkip.amazonaws.com)
 
 # 9. Final Output
 echo -e "\n${GREEN}================================================================${NC}"

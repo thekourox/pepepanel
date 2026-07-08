@@ -142,20 +142,25 @@ def _proxy_request(base_url, path, req):
     if req.query_string:
         url += f"?{req.query_string.decode('utf-8')}"
     
-    # Forward the request to the underlying microservice
-    resp = requests.request(
-        method=req.method,
-        url=url,
-        headers={key: value for (key, value) in req.headers if key.lower() != 'host'},
-        data=req.get_data(),
-        cookies=req.cookies,
-        allow_redirects=False)
-    
-    # Exclude headers that cause issues with Flask's response mechanism
-    excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
-    headers = [(name, value) for (name, value) in resp.raw.headers.items()
-               if name.lower() not in excluded_headers]
-    return Response(resp.content, resp.status_code, headers)
+    try:
+        # Forward the request to the underlying microservice
+        resp = requests.request(
+            method=req.method,
+            url=url,
+            headers={key: value for (key, value) in req.headers if key.lower() != 'host'},
+            data=req.get_data(),
+            cookies=req.cookies,
+            allow_redirects=False,
+            timeout=10)
+        
+        # Exclude headers that cause issues with Flask's response mechanism
+        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+        headers = [(name, value) for (name, value) in resp.raw.headers.items()
+                   if name.lower() not in excluded_headers]
+        return Response(resp.content, resp.status_code, headers)
+    except requests.exceptions.RequestException as e:
+        error_msg = f"<h3>Service Unavailable (502 Bad Gateway)</h3><p>The microservice at <b>{base_url}</b> is currently down or starting up.</p><p>Please check the service status on the server.</p>"
+        return error_msg, 502
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
