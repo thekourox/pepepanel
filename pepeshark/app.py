@@ -32,6 +32,7 @@ class InjectRequest(BaseModel):
     core_id: str
     template_inbound_id: str
     locations: List[Location]
+    server_ip: str = "127.0.0.1"
 
 class GroupCreateRequest(BaseModel):
     group_name: str
@@ -225,7 +226,7 @@ async def inject_to_pasargard(
                     "settings": {
                         "servers": [
                             {
-                                "address": "127.0.0.1",
+                                "address": request.server_ip,
                                 "port": local_port
                             }
                         ]

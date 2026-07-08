@@ -99,7 +99,7 @@ class TorInstance:
                         pass
         
         config = {
-            'SocksPort': f'127.0.0.1:{self.socks_port}',
+            'SocksPort': f'0.0.0.0:{self.socks_port}',
             'ControlPort': f'127.0.0.1:{self.control_port}',
             'CookieAuthentication': '1',
             'DataDirectory': self.data_dir.replace('\\', '/'),

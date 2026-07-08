@@ -228,7 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
             wg_address: wgAddressInput.value.trim(),
             core_id: coreSelector.value,
             template_inbound_id: inboundSelector.value,
-            locations: selectedLocations
+            locations: selectedLocations,
+            server_ip: window.location.hostname
         };
 
         try {

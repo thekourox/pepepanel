@@ -48,8 +48,19 @@ echo -e "\n${YELLOW}[*] Installing system dependencies (curl, wget, python3, pip
 apt-get update -y -q > /dev/null 2>&1
 apt-get install -y -q curl wget tar python3 python3-pip sqlite3 > /dev/null 2>&1
 
-# 3. Download & Extract
-echo -e "${YELLOW}[*] Downloading PepePanel from mirror server...${NC}"
+# 3. Check for existing installation
+if [ -d "$INSTALL_DIR" ]; then
+    echo -e "${YELLOW}[!] PepePanel is already installed at $INSTALL_DIR.${NC}"
+    read -p "Do you want to overwrite the existing installation? [y/N]: " overwrite
+    if [[ "$overwrite" != "y" && "$overwrite" != "Y" ]]; then
+        echo -e "${RED}[*] Installation aborted by user.${NC}"
+        exit 0
+    fi
+    echo -e "${YELLOW}[*] Proceeding to overwrite existing installation...${NC}"
+fi
+
+# 4. Download & Extract
+echo -e "\n${YELLOW}[*] Downloading PepePanel from mirror server...${NC}"
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 cd /tmp

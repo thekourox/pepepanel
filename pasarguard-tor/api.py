@@ -156,6 +156,7 @@ class PasargardInjectRequest(BaseModel):
     pasargard_token: str
     core_id: str
     template_inbound_id: str
+    server_ip: str = "127.0.0.1"
 
 @app.post("/api/pasargard/cores")
 async def fetch_cores_api(req: FetchCoresRequest):
@@ -247,7 +248,7 @@ async def inject_pasargard(req: PasargardInjectRequest):
             used_ports = {inb.get("port") for inb in xray_config["inbounds"] if isinstance(inb.get("port"), int)}
             next_port = max(used_ports) + 1 if used_ports else 10000
             
-            server_ip = "127.0.0.1"
+            server_ip = req.server_ip
             host_payloads = []
             
             for port, country in mapping.items():

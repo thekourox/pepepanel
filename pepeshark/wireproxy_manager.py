@@ -56,7 +56,7 @@ Endpoint = {endpoint}
 PersistentKeepalive = 25
 
 [Socks5]
-BindAddress = 127.0.0.1:{local_port}
+BindAddress = 0.0.0.0:{local_port}
 """
     with open(conf_path, "w", encoding="utf-8") as f:
         f.write(config_content)
