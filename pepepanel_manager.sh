@@ -88,6 +88,43 @@ view_logs() {
     journalctl -u pepepanel-gateway.service -f
 }
 
+fetch_pg_token() {
+    echo ""
+    echo "====================================="
+    echo "     Pasarguard Token Fetcher        "
+    echo "====================================="
+    read -p "Enter Pasarguard Port (Default 54321): " pg_port
+    pg_port=${pg_port:-54321}
+    read -p "Enter Pasarguard Username: " pg_user
+    read -sp "Enter Pasarguard Password: " pg_pass
+    echo ""
+
+    # Python script to fetch the token
+    python3 -c "
+import urllib.request
+import urllib.parse
+import json
+import sys
+
+url = 'http://127.0.0.1:$pg_port/api/admin/token'
+data = urllib.parse.urlencode({'username': '$pg_user', 'password': '$pg_pass'}).encode('utf-8')
+req = urllib.request.Request(url, data=data)
+try:
+    with urllib.request.urlopen(req, timeout=5) as response:
+        if response.status == 200:
+            resp_data = json.loads(response.read().decode())
+            token = resp_data.get('access_token')
+            if token:
+                print(f'\n\033[1;32m[+] SUCCESS! Your Admin API Token:\033[0m\n\n{token}\n')
+            else:
+                print('\n[!] Logged in, but token not found in response.')
+except urllib.error.HTTPError as e:
+    print(f'\n\033[1;31m[!] Login failed. Check your username/password. (HTTP {e.code})\033[0m')
+except Exception as e:
+    print(f'\n\033[1;31m[!] Connection error: {e}. Is Pasarguard running on port $pg_port?\033[0m')
+"
+}
+
 uninstall_services() {
     echo ""
     echo "====================================="
@@ -137,9 +174,10 @@ while true; do
     echo "3. View System Logs (Gateway)"
     echo "4. Restart Gateway Service"
     echo "5. Uninstall PepePanel"
-    echo "6. Exit"
+    echo "6. Fetch Pasarguard Token"
+    echo "7. Exit"
     echo "====================================="
-    read -p "Select an option [1-6]: " option
+    read -p "Select an option [1-7]: " option
 
     case $option in
         1) install_services ;;
@@ -147,7 +185,8 @@ while true; do
         3) view_logs ;;
         4) systemctl restart pepepanel-gateway.service; echo "Gateway Restarted." ;;
         5) uninstall_services ;;
-        6) echo "Exiting..."; exit 0 ;;
+        6) fetch_pg_token ;;
+        7) echo "Exiting..."; exit 0 ;;
         *) echo "Invalid option." ;;
     esac
 done

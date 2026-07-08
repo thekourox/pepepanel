@@ -79,13 +79,13 @@ pip3 install flask requests werkzeug > /dev/null 2>&1
 echo -e "${YELLOW}[*] Executing sub-installers for Tor and Surfshark...${NC}"
 if [ -f "pasarguard-tor/install_service.sh" ]; then
     chmod +x pasarguard-tor/install_service.sh
-    cd pasarguard-tor && ./install_service.sh > /dev/null 2>&1
+    cd pasarguard-tor && ./install_service.sh
     cd ..
 fi
 
 if [ -f "pepeshark/install.sh" ]; then
     chmod +x pepeshark/install.sh
-    cd pepeshark && ./install.sh > /dev/null 2>&1
+    cd pepeshark && ./install.sh
     cd ..
 fi
 
