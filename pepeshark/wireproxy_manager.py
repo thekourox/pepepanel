@@ -53,6 +53,7 @@ MTU = 1420
 [Peer]
 PublicKey = {public_key}
 Endpoint = {endpoint}
+AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 
 [Socks5]
