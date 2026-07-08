@@ -254,8 +254,14 @@ async def inject_to_pasargard(
                 flag = get_flag(loc.countryCode)
                 location_part = f" - {loc.location}" if loc.location and loc.location.strip() != loc.country.strip() else ""
                 new_name_remark = f"{loc.country}{location_part} {flag}"
-                new_host_payload = dict(template_host)
+                new_host_payload = copy.deepcopy(template_host)
                 new_host_payload.pop("id", None)
+                
+                # Generate a unique UUID for this host so both DB and Xray sync
+                import uuid
+                new_uuid = str(uuid.uuid4())
+                new_host_payload["uuid"] = new_uuid
+                
                 new_host_payload.pop("created_at", None)
                 new_host_payload.pop("updated_at", None)
                 new_host_payload["name"] = new_name_remark
@@ -263,6 +269,13 @@ async def inject_to_pasargard(
                 new_host_payload["inbound_tag"] = template_host.get("inbound_tag")
                 new_host_payload["port"] = new_inbound["port"]
                 host_payloads.append(new_host_payload)
+                
+                # Update Xray config to accept this specific UUID
+                if "settings" in new_inbound and "clients" in new_inbound["settings"] and len(new_inbound["settings"]["clients"]) > 0:
+                    client_template = copy.deepcopy(new_inbound["settings"]["clients"][0])
+                    client_template["id"] = new_uuid
+                    client_template["email"] = new_host_payload.get("email", new_uuid)
+                    new_inbound["settings"]["clients"] = [client_template]
             
             # 4. Save updated core config FIRST so the tags are registered
             core_data["config"] = xray_config

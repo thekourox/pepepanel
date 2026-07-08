@@ -282,14 +282,26 @@ async def inject_pasargard(req: PasargardInjectRequest):
                 full_country_name = COUNTRY_MAP.get(country, country)
                 flag = get_emoji(country)
                 new_remark = f"{full_country_name} {flag}"
-                new_host_payload = dict(template_host)
+                new_host_payload = copy.deepcopy(template_host)
                 new_host_payload.pop("id", None)
+                
+                # Generate a unique UUID for this host so both DB and Xray sync
+                new_uuid = str(uuid.uuid4())
+                new_host_payload["uuid"] = new_uuid
+                
                 new_host_payload.pop("created_at", None)
                 new_host_payload.pop("updated_at", None)
                 new_host_payload["remark"] = new_remark
                 new_host_payload["inbound_tag"] = template_host.get("inbound_tag")
                 new_host_payload["port"] = new_inbound["port"]
                 host_payloads.append(new_host_payload)
+                
+                # Update Xray config to accept this specific UUID
+                if "settings" in new_inbound and "clients" in new_inbound["settings"] and len(new_inbound["settings"]["clients"]) > 0:
+                    client_template = copy.deepcopy(new_inbound["settings"]["clients"][0])
+                    client_template["id"] = new_uuid
+                    client_template["email"] = new_host_payload.get("email", new_uuid)
+                    new_inbound["settings"]["clients"] = [client_template]
                 
             # 3. Save Core Config FIRST
             core_data["config"] = xray_config
