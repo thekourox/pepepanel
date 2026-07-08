@@ -270,7 +270,7 @@ btnExecuteInject.addEventListener('click', async () => {
             pasargard_token: pasargardToken,
             core_id: coreId,
             template_inbound_id: templateId,
-            server_ip: window.location.hostname
+            server_ip: document.getElementById('isLocalTor').checked ? '127.0.0.1' : window.location.hostname
         };
 
         const res = await fetch('/api/inject_pasargard', {

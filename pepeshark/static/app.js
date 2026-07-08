@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             core_id: coreSelector.value,
             template_inbound_id: inboundSelector.value,
             locations: selectedLocations,
-            server_ip: window.location.hostname
+            server_ip: document.getElementById('isLocal').checked ? '127.0.0.1' : window.location.hostname
         };
 
         try {
