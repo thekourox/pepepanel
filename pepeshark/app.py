@@ -157,6 +157,17 @@ async def inject_to_pasargard(
                 xray_config["routing"] = {"rules": []}
             if "rules" not in xray_config["routing"]:
                 xray_config["routing"]["rules"] = []
+                
+            # STRIP PREVIOUS INJECTIONS TO PREVENT DUPLICATES
+            xray_config["inbounds"] = [i for i in xray_config.get("inbounds", []) if not (i.get("tag", "").startswith("Surf-") or i.get("tag", "").startswith("B-In-"))]
+            xray_config["outbounds"] = [o for o in xray_config.get("outbounds", []) if not (o.get("tag", "").startswith("SurfOut-") or o.get("tag", "").startswith("B-Out-"))]
+            xray_config["routing"]["rules"] = [
+                r for r in xray_config["routing"]["rules"] 
+                if not (
+                    (isinstance(r.get("inboundTag"), list) and any(t.startswith("Surf-") or t.startswith("B-In-") for t in r.get("inboundTag"))) or 
+                    (isinstance(r.get("outboundTag"), str) and (r.get("outboundTag", "").startswith("SurfOut-") or r.get("outboundTag", "").startswith("B-Out-")))
+                )
+            ]
             
             # 2. Fetch Template Host
             host_resp = await client.get(
@@ -397,16 +408,10 @@ async def cleanup_group_b(
                 
             core_data["config"] = xray_config
             await client.put(
-                f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}?restart_nodes=false",
+                f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}?restart_nodes=true",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
                 json=core_data,
                 timeout=10.0
-            )
-            
-            # 3. Restart Core
-            await client.post(
-                f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}/restart",
-                headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"}
             )
             
             # 4. Stop Wireproxies

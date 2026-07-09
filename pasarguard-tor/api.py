@@ -228,6 +228,17 @@ async def inject_pasargard(req: PasargardInjectRequest):
             if "routing" not in xray_config: xray_config["routing"] = {"rules": []}
             if "rules" not in xray_config["routing"]: xray_config["routing"]["rules"] = []
             
+            # STRIP PREVIOUS INJECTIONS TO PREVENT DUPLICATES
+            xray_config["inbounds"] = [i for i in xray_config.get("inbounds", []) if not (i.get("tag", "").startswith("grpA-in-"))]
+            xray_config["outbounds"] = [o for o in xray_config.get("outbounds", []) if not (o.get("tag", "").startswith("grpA-out-"))]
+            xray_config["routing"]["rules"] = [
+                r for r in xray_config["routing"]["rules"] 
+                if not (
+                    (isinstance(r.get("inboundTag"), list) and any(t.startswith("grpA-in-") for t in r.get("inboundTag"))) or 
+                    (isinstance(r.get("outboundTag"), str) and r.get("outboundTag", "").startswith("grpA-out-"))
+                )
+            ]
+            
             # 2. Fetch Template Host
             host_resp = await client.get(f"{host_url}/api/host/{req.template_inbound_id}", headers=auth_header, timeout=10.0)
             if not host_resp.is_success:
