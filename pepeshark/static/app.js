@@ -370,24 +370,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchLogs() {
         if (!fetchLogsBtn) return;
-        fetchLogsBtn.textContent = "Fetching...";
         try {
             const response = await fetch('/api/logs/wireproxy');
             const data = await response.json();
             if (response.ok && data.status === 'success') {
+                const isScrolledToBottom = logConsole.scrollHeight - logConsole.clientHeight <= logConsole.scrollTop + 10;
                 logConsole.textContent = data.logs || "No logs yet.";
-                logConsole.scrollTop = logConsole.scrollHeight;
+                if (isScrolledToBottom) {
+                    logConsole.scrollTop = logConsole.scrollHeight;
+                }
             } else {
                 logConsole.textContent = `Error fetching logs: ${data.logs || data.message}`;
             }
         } catch (e) {
-            logConsole.textContent = "Network error while fetching logs.";
-        } finally {
-            fetchLogsBtn.textContent = "Refresh Logs";
+            console.error("Error fetching logs in background.");
         }
     }
 
-    if (fetchLogsBtn) fetchLogsBtn.addEventListener('click', fetchLogs);
+    if (fetchLogsBtn) {
+        fetchLogsBtn.addEventListener('click', async () => {
+            fetchLogsBtn.textContent = "Fetching...";
+            await fetchLogs();
+            fetchLogsBtn.textContent = "Refresh Logs";
+            logConsole.scrollTop = logConsole.scrollHeight;
+        });
+    }
 
     if (restartServiceBtn) {
         restartServiceBtn.addEventListener('click', async () => {
@@ -397,7 +404,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/wireproxy/restart', { method: 'POST' });
                 const data = await response.json();
                 showStatus(data.message || "Restart signal sent.", data.status === 'success' ? 'success' : 'error');
-                setTimeout(fetchLogs, 1500);
             } catch (e) {
                 showStatus("Network error", "error");
             } finally {
@@ -415,7 +421,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/wireproxy/stop', { method: 'POST' });
                 const data = await response.json();
                 showStatus(data.message || "Stop signal sent.", data.status === 'success' ? 'success' : 'error');
-                setTimeout(fetchLogs, 1500);
             } catch (e) {
                 showStatus("Network error", "error");
             } finally {
@@ -425,8 +430,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Auto-fetch logs on start
-    setTimeout(fetchLogs, 1000);
+    // Auto-fetch logs on start and then every 2 seconds
+    fetchLogs();
+    setInterval(fetchLogs, 2000);
 
     // Start
     initializeApp();
