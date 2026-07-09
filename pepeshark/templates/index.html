@@ -108,10 +108,21 @@
                 </div>
             </section>
 
-            <div class="action-container" style="display: flex; gap: 1rem; justify-content: center;">
+            <div class="action-container" style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem;">
                 <button id="injectBtn" class="primary-btn" disabled>Inject Native WireGuard</button>
                 <button id="createGroupBtn" class="primary-btn" style="background: var(--success);" disabled>Create Custom Group</button>
             </div>
+            
+            <section class="card service-section">
+                <h2>5. Wireproxy Service & Logs</h2>
+                <p class="subtitle">Monitor and control the Surfshark SOCKS5 engine (Wireproxy) unconditionally.</p>
+                <div class="service-controls" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                    <button id="restartServiceBtn" class="primary-btn" style="background: var(--primary-color); padding: 8px 15px; font-size: 14px;">Restart Service</button>
+                    <button id="stopServiceBtn" class="primary-btn" style="background: var(--error, #e74c3c); padding: 8px 15px; font-size: 14px;">Stop Service</button>
+                    <button id="fetchLogsBtn" class="primary-btn" style="background: var(--text-muted); padding: 8px 15px; font-size: 14px;">Refresh Logs</button>
+                </div>
+                <div style="background: #1e1e1e; color: #a3be8c; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; height: 250px; overflow-y: scroll; border: 1px solid #333; white-space: pre-wrap;" id="logConsole">Logs will appear here...</div>
+            </section>
             
             <div id="statusMessage" class="status-message hidden"></div>
         </main>

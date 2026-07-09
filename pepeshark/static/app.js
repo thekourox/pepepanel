@@ -362,6 +362,72 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMessage.className = `status-message visible ${type}`;
     }
 
+    // Service and Logs
+    const fetchLogsBtn = document.getElementById('fetchLogsBtn');
+    const restartServiceBtn = document.getElementById('restartServiceBtn');
+    const stopServiceBtn = document.getElementById('stopServiceBtn');
+    const logConsole = document.getElementById('logConsole');
+
+    async function fetchLogs() {
+        if (!fetchLogsBtn) return;
+        fetchLogsBtn.textContent = "Fetching...";
+        try {
+            const response = await fetch('/api/logs/wireproxy');
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                logConsole.textContent = data.logs || "No logs yet.";
+                logConsole.scrollTop = logConsole.scrollHeight;
+            } else {
+                logConsole.textContent = `Error fetching logs: ${data.logs || data.message}`;
+            }
+        } catch (e) {
+            logConsole.textContent = "Network error while fetching logs.";
+        } finally {
+            fetchLogsBtn.textContent = "Refresh Logs";
+        }
+    }
+
+    if (fetchLogsBtn) fetchLogsBtn.addEventListener('click', fetchLogs);
+
+    if (restartServiceBtn) {
+        restartServiceBtn.addEventListener('click', async () => {
+            restartServiceBtn.disabled = true;
+            restartServiceBtn.textContent = "Restarting...";
+            try {
+                const response = await fetch('/api/wireproxy/restart', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.message || "Restart signal sent.", data.status === 'success' ? 'success' : 'error');
+                setTimeout(fetchLogs, 1500);
+            } catch (e) {
+                showStatus("Network error", "error");
+            } finally {
+                restartServiceBtn.disabled = false;
+                restartServiceBtn.textContent = "Restart Service";
+            }
+        });
+    }
+
+    if (stopServiceBtn) {
+        stopServiceBtn.addEventListener('click', async () => {
+            stopServiceBtn.disabled = true;
+            stopServiceBtn.textContent = "Stopping...";
+            try {
+                const response = await fetch('/api/wireproxy/stop', { method: 'POST' });
+                const data = await response.json();
+                showStatus(data.message || "Stop signal sent.", data.status === 'success' ? 'success' : 'error');
+                setTimeout(fetchLogs, 1500);
+            } catch (e) {
+                showStatus("Network error", "error");
+            } finally {
+                stopServiceBtn.disabled = false;
+                stopServiceBtn.textContent = "Stop Service";
+            }
+        });
+    }
+
+    // Auto-fetch logs on start
+    setTimeout(fetchLogs, 1000);
+
     // Start
     initializeApp();
 });

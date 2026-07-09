@@ -449,6 +449,36 @@ def create_subscription_group(request: GroupCreateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create group: {str(e)}")
 
+@app.get("/api/logs/wireproxy")
+def get_wireproxy_logs():
+    log_file = os.path.join(os.path.dirname(__file__), "wireproxy_out.log")
+    if not os.path.exists(log_file):
+        return {"status": "success", "logs": "No logs available yet."}
+    try:
+        with open(log_file, "r") as f:
+            # Read last 1000 lines max
+            lines = f.readlines()
+            return {"status": "success", "logs": "".join(lines[-1000:])}
+    except Exception as e:
+        return {"status": "error", "logs": str(e)}
+
+@app.post("/api/wireproxy/restart")
+def restart_all_wireproxies():
+    try:
+        wireproxy_manager.recover_all_proxies()
+        return {"status": "success", "message": "All Wireproxy instances restarted."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/wireproxy/stop")
+def stop_all_wireproxies():
+    try:
+        import subprocess
+        subprocess.run(["pkill", "-f", "wireproxy -c"], check=False)
+        return {"status": "success", "message": "All Wireproxy instances stopped."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8088)
