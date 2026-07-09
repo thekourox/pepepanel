@@ -229,6 +229,10 @@ async def inject_to_pasargard(
                 new_inbound["port"] = next_port
                 xray_config["inbounds"].append(new_inbound)
                 
+                # Auto-open firewall port
+                import os
+                os.system(f"ufw allow {next_port}/tcp >/dev/null 2>&1")
+                
                 # Update Core Xray Config with SOCKS Outbound
                 xray_config["outbounds"] = [ob for ob in xray_config["outbounds"] if ob.get("tag") != outbound_tag]
                 socks_outbound = {

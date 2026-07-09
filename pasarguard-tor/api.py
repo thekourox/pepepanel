@@ -272,6 +272,11 @@ async def inject_pasargard(req: PasargardInjectRequest):
                 new_inbound = copy.deepcopy(template_inbound)
                 new_inbound["tag"] = cloned_tag
                 new_inbound["port"] = next_port
+                
+                # Auto-open firewall port
+                import os
+                os.system(f"ufw allow {next_port}/tcp >/dev/null 2>&1")
+                
                 next_port += 1
                 xray_config["inbounds"].append(new_inbound)
                 
