@@ -43,13 +43,17 @@ app.add_middleware(
 )
 
 # Ensure static directory exists
-os.makedirs("static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+import os
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(static_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-@app.get("/", response_class=HTMLResponse)
-async def get_index():
-    with open("static/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+@app.get("/")
+def get_index():
+    import os
+    index_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    with open(index_path, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
 @app.get("/api/status")
 async def get_status():

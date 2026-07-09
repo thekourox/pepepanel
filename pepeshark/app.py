@@ -13,11 +13,14 @@ import wireproxy_manager
 
 app = FastAPI(title="Pasargard VPN Automator")
 
-os.makedirs("static", exist_ok=True)
-os.makedirs("templates", exist_ok=True)
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+os.makedirs(static_dir, exist_ok=True)
+os.makedirs(templates_dir, exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+templates = Jinja2Templates(directory=templates_dir)
 
 class Location(BaseModel):
     country: str
@@ -482,10 +485,10 @@ def stop_all_wireproxies():
 @app.on_event("startup")
 def startup_event():
     try:
-        logger.info("Auto-recovering wireproxies on startup...")
+        print("Auto-recovering wireproxies on startup...")
         wireproxy_manager.recover_all_proxies()
     except Exception as e:
-        logger.error(f"Failed to auto-recover wireproxies: {e}")
+        print(f"Failed to auto-recover wireproxies: {e}")
 
 if __name__ == "__main__":
     import uvicorn
