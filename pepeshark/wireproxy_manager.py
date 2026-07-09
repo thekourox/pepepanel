@@ -101,7 +101,7 @@ def stop_surfshark_proxies(tags: list[str]):
     for tag in tags:
         try:
             # Kill process matching the config file
-            subprocess.run(["pkill", "-f", f"wireproxy -c .*{tag}.conf"], check=False)
+            subprocess.run(f"pkill -f 'wireproxy -c .*{tag}.conf' || true", shell=True, check=False)
         except Exception as e:
             logger.error(f"Failed to kill processes for {tag}: {e}")
             
@@ -117,7 +117,7 @@ def recover_all_proxies():
     """Kills any dangling wireproxy processes and restarts all configs."""
     logger.info("Recovering all Wireproxy instances...")
     try:
-        subprocess.run(["pkill", "-f", "wireproxy -c"], check=False)
+        subprocess.run("pkill -f 'wireproxy -c' || killall wireproxy || true", shell=True, check=False)
     except Exception:
         pass
         

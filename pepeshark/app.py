@@ -477,7 +477,7 @@ def restart_all_wireproxies():
 def stop_all_wireproxies():
     try:
         import subprocess
-        subprocess.run(["pkill", "-f", "wireproxy -c"], check=False)
+        subprocess.run("pkill -f 'wireproxy -c' || killall wireproxy || true", shell=True, check=False)
         return {"status": "success", "message": "All Wireproxy instances stopped."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
