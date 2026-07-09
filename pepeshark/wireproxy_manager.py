@@ -66,14 +66,15 @@ BindAddress = 0.0.0.0:{local_port}
     # We use nohup or just Popen to let it run in the background
     logger.info(f"Starting wireproxy for {tag} on SOCKS5 127.0.0.1:{local_port}")
     log_file = os.path.join(os.path.dirname(__file__), "wireproxy_out.log")
-    with open(log_file, "a") as lf:
-        lf.write(f"\\n--- Starting wireproxy for {tag} at 127.0.0.1:{local_port} ---\\n")
-        subprocess.Popen(
-            [WIREPROXY_BIN, "-c", conf_path],
-            stdout=lf,
-            stderr=lf,
-            start_new_session=True
-        )
+    lf = open(log_file, "a")
+    lf.write(f"\\n--- Starting wireproxy for {tag} at 127.0.0.1:{local_port} ---\\n")
+    lf.flush()
+    subprocess.Popen(
+        [WIREPROXY_BIN, "-c", conf_path],
+        stdout=lf,
+        stderr=lf,
+        start_new_session=True
+    )
 
 def stop_surfshark_proxies(tags: list[str]):
     """Finds and kills specific wireproxy instances and deletes their configs."""
@@ -103,13 +104,14 @@ def recover_all_proxies():
         
     configs = glob.glob(os.path.join(CONF_DIR, "*.conf"))
     log_file = os.path.join(os.path.dirname(__file__), "wireproxy_out.log")
-    with open(log_file, "a") as lf:
-        for conf_path in configs:
-            logger.info(f"Restarting wireproxy for {conf_path}")
-            lf.write(f"\\n--- Restarting wireproxy from {conf_path} ---\\n")
-            subprocess.Popen(
-                [WIREPROXY_BIN, "-c", conf_path],
-                stdout=lf,
-                stderr=lf,
-                start_new_session=True
-            )
+    lf = open(log_file, "a")
+    for conf_path in configs:
+        logger.info(f"Restarting wireproxy for {conf_path}")
+        lf.write(f"\\n--- Restarting wireproxy from {conf_path} ---\\n")
+        lf.flush()
+        subprocess.Popen(
+            [WIREPROXY_BIN, "-c", conf_path],
+            stdout=lf,
+            stderr=lf,
+            start_new_session=True
+        )
