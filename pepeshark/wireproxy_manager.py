@@ -19,24 +19,43 @@ os.makedirs(CONF_DIR, exist_ok=True)
 
 def ensure_wireproxy():
     """Downloads wireproxy if it does not exist."""
+    log_file = os.path.join(os.path.dirname(__file__), "wireproxy_out.log")
+    
     if os.path.exists(WIREPROXY_BIN):
         return
 
     logger.info("Wireproxy binary not found. Downloading...")
-    url = "https://github.com/octeep/wireproxy/releases/download/v1.0.8/wireproxy_linux_amd64.tar.gz"
+    with open(log_file, "a") as lf:
+        lf.write("\\n--- Downloading Wireproxy from GitHub ---\\n")
+        
+    url_direct = "https://github.com/octeep/wireproxy/releases/download/v1.0.8/wireproxy_linux_amd64.tar.gz"
+    url_proxy = "https://ghproxy.com/https://github.com/octeep/wireproxy/releases/download/v1.0.8/wireproxy_linux_amd64.tar.gz"
     tar_path = os.path.join(BIN_DIR, "wireproxy.tar.gz")
     
-    urllib.request.urlretrieve(url, tar_path)
-    
-    with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(path=BIN_DIR)
+    try:
+        try:
+            urllib.request.urlretrieve(url_direct, tar_path)
+        except Exception as e:
+            with open(log_file, "a") as lf:
+                lf.write(f"Direct download failed: {e}. Trying proxy...\\n")
+            urllib.request.urlretrieve(url_proxy, tar_path)
+            
+        with tarfile.open(tar_path, "r:gz") as tar:
+            tar.extractall(path=BIN_DIR)
+            
+        os.remove(tar_path)
         
-    os.remove(tar_path)
-    
-    # Ensure it's executable
-    st = os.stat(WIREPROXY_BIN)
-    os.chmod(WIREPROXY_BIN, st.st_mode | stat.S_IEXEC)
-    logger.info("Wireproxy downloaded and ready.")
+        # Ensure it's executable
+        st = os.stat(WIREPROXY_BIN)
+        os.chmod(WIREPROXY_BIN, st.st_mode | stat.S_IEXEC)
+        logger.info("Wireproxy downloaded and ready.")
+        with open(log_file, "a") as lf:
+            lf.write("Wireproxy successfully downloaded and extracted.\\n")
+            
+    except Exception as e:
+        with open(log_file, "a") as lf:
+            lf.write(f"CRITICAL ERROR downloading wireproxy: {e}\\n")
+        raise RuntimeError(f"Failed to download wireproxy: {e}")
 
 def start_wireproxy(tag: str, private_key: str, wg_address: str, endpoint: str, public_key: str, local_port: int):
     """Generates wireproxy config and starts the daemon."""

@@ -479,6 +479,14 @@ def stop_all_wireproxies():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.on_event("startup")
+def startup_event():
+    try:
+        logger.info("Auto-recovering wireproxies on startup...")
+        wireproxy_manager.recover_all_proxies()
+    except Exception as e:
+        logger.error(f"Failed to auto-recover wireproxies: {e}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8088)
