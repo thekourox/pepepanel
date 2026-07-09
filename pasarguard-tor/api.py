@@ -308,7 +308,7 @@ async def inject_pasargard(req: PasargardInjectRequest):
                 new_host_payload.pop("created_at", None)
                 new_host_payload.pop("updated_at", None)
                 new_host_payload["remark"] = new_remark
-                new_host_payload["inbound_tag"] = template_host.get("inbound_tag")
+                new_host_payload["inbound_tag"] = cloned_tag
                 new_host_payload["port"] = new_inbound["port"]
                 host_payloads.append(new_host_payload)
                 
