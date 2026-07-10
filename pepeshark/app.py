@@ -244,7 +244,7 @@ async def inject_to_pasargard(
                     "settings": {
                         "servers": [
                             {
-                                "address": request.server_ip,
+                                "address": "127.0.0.1",
                                 "port": local_port
                             }
                         ]
