@@ -56,6 +56,17 @@ if [ -d "$INSTALL_DIR" ]; then
         echo -e "${RED}[*] Installation aborted by user.${NC}"
         exit 0
     fi
+    
+    KEEP_DB="n"
+    if [ -f "$INSTALL_DIR/auth.db" ]; then
+        read -p "Do you want to KEEP existing admin accounts? (auth.db) [Y/n]: " keep_db_input
+        if [[ "$keep_db_input" != "n" && "$keep_db_input" != "N" ]]; then
+            KEEP_DB="y"
+            cp "$INSTALL_DIR/auth.db" "/tmp/auth.db.bak"
+            echo -e "${GREEN}[+] Backed up auth.db${NC}"
+        fi
+    fi
+    
     echo -e "${YELLOW}[*] Proceeding to overwrite existing installation...${NC}"
 fi
 
@@ -82,6 +93,11 @@ fi
 
 cd "$INSTALL_DIR"
 
+if [ "$KEEP_DB" == "y" ]; then
+    mv "/tmp/auth.db.bak" "$INSTALL_DIR/auth.db"
+    echo -e "${GREEN}[+] Restored existing auth.db${NC}"
+fi
+
 # 4. Setup Python Environment
 echo -e "\n${YELLOW}[*] Setting up Python environment...${NC}"
 pip3 install flask requests werkzeug > /dev/null 2>&1
@@ -101,11 +117,12 @@ if [ -f "pepeshark/install.sh" ]; then
 fi
 
 # 6. Auto-Generate Secure Admin Credentials
-echo -e "${YELLOW}[*] Generating secure admin credentials...${NC}"
-USERNAME="admin_$((RANDOM % 900 + 100))"
-PASSWORD=$(tr -dc 'A-Za-z0-9!@#$%^&*' </dev/urandom | head -c 16)
+if [ "$KEEP_DB" != "y" ]; then
+    echo -e "${YELLOW}[*] Generating secure admin credentials...${NC}"
+    USERNAME="admin_$((RANDOM % 900 + 100))"
+    PASSWORD=$(tr -dc 'A-Za-z0-9!@#$%^&*' </dev/urandom | head -c 16)
 
-python3 -c "
+    python3 -c "
 import sqlite3
 from werkzeug.security import generate_password_hash
 conn = sqlite3.connect('auth.db')
@@ -115,6 +132,9 @@ conn.execute('INSERT OR REPLACE INTO users (username, password_hash) VALUES (?, 
 conn.commit()
 conn.close()
 "
+else
+    echo -e "${GREEN}[+] Existing admin credentials preserved.${NC}"
+fi
 
 # 7. Setup Systemd Service for Gateway
 echo -e "${YELLOW}[*] Setting up Gateway systemd service...${NC}"
@@ -159,8 +179,12 @@ echo -e "${GREEN}===============================================================
 echo -e "🌐 Dashboard Login: ${CYAN}http://$SERVER_IP:5000${NC}"
 echo -e ""
 echo -e "${YELLOW}--- 🔐 ADMIN CREDENTIALS ---${NC}"
-echo -e "👤 Username : ${RED}$USERNAME${NC}"
-echo -e "🔑 Password : ${RED}$PASSWORD${NC}"
+if [ "$KEEP_DB" != "y" ]; then
+    echo -e "👤 Username : ${RED}$USERNAME${NC}"
+    echo -e "🔑 Password : ${RED}$PASSWORD${NC}"
+else
+    echo -e "${GREEN}Preserved from previous installation.${NC}"
+fi
 echo -e "${YELLOW}----------------------------${NC}"
 echo -e ""
 echo -e "⚙️ To manage the panel in the future, simply type: ${CYAN}pepeshark${NC}"
