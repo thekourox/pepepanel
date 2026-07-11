@@ -243,6 +243,17 @@ async def inject_pasargard(req: PasargardInjectRequest):
                 )
             ]
             
+            # CLEANUP OLD HOSTS IN DB TO PREVENT DUPLICATES
+            try:
+                hosts_resp = await client.get(f"{host_url}/api/hosts", headers=auth_header, timeout=10.0)
+                if hosts_resp.status_code == 200:
+                    for old_h in hosts_resp.json():
+                        if old_h.get("inbound_tag", "").startswith("grpA-in-"):
+                            await client.delete(f"{host_url}/api/host/{old_h['id']}", headers=auth_header, timeout=10.0)
+            except Exception as e:
+                pass
+
+            
             # 2. Fetch Template Host
             host_resp = await client.get(f"{host_url}/api/host/{req.template_inbound_id}", headers=auth_header, timeout=10.0)
             if not host_resp.is_success:

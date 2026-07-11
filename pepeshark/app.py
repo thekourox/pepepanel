@@ -172,6 +172,25 @@ async def inject_to_pasargard(
                 )
             ]
             
+            # CLEANUP OLD HOSTS IN DB TO PREVENT DUPLICATES
+            try:
+                hosts_resp = await client.get(
+                    f"{x_pasarguard_host.rstrip('/')}/api/hosts",
+                    headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
+                    timeout=10.0
+                )
+                if hosts_resp.status_code == 200:
+                    for old_h in hosts_resp.json():
+                        if old_h.get("inbound_tag", "").startswith("Surf-") or old_h.get("inbound_tag", "").startswith("B-In-"):
+                            # Delete old injected hosts
+                            await client.delete(
+                                f"{x_pasarguard_host.rstrip('/')}/api/host/{old_h['id']}",
+                                headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
+                                timeout=10.0
+                            )
+            except Exception as e:
+                pass # If it fails, we just continue
+                
             # 2. Fetch Template Host
             host_resp = await client.get(
                 f"{x_pasarguard_host.rstrip('/')}/api/host/{request.template_inbound_id}",
