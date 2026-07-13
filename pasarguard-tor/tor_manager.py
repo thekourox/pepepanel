@@ -127,6 +127,26 @@ class TorInstance:
             logger.info(f"[{self.country}] Using optimal starting fingerprint: {best_fingerprint}")
         else:
             config['ExitNodes'] = f'{{{self.country}}}'
+            
+        # AUTO-BYPASS HETZNER BLOCKS: Route Tor through Surfshark or Cloudflare WARP
+        try:
+            import socket
+            wp_ports = []
+            for conn in psutil.net_connections(kind='tcp'):
+                if conn.status == 'LISTEN' and conn.laddr.ip in ('127.0.0.1', '0.0.0.0', '::1') and 20000 <= conn.laddr.port < 21000:
+                    wp_ports.append(conn.laddr.port)
+            
+            if wp_ports:
+                proxy_port = random.choice(wp_ports)
+                config['Socks5Proxy'] = f'127.0.0.1:{proxy_port}'
+                logger.info(f"[{self.country}] Bypassing DataCenter Blocks: Routing Tor through local Surfshark proxy (Port {proxy_port})")
+            else:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    if s.connect_ex(('127.0.0.1', 40000)) == 0:
+                        config['Socks5Proxy'] = '127.0.0.1:40000'
+                        logger.info(f"[{self.country}] Bypassing DataCenter Blocks: Routing Tor through Cloudflare WARP (Port 40000)")
+        except Exception as e:
+            pass
 
         def handle_init_msg(line):
             match = re.search(r'Bootstrapped (\d+)%', line)
