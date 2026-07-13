@@ -151,6 +151,8 @@ WorkingDirectory=$INSTALL_DIR
 ExecStart=/usr/bin/python3 $INSTALL_DIR/gateway.py
 Restart=always
 RestartSec=5
+LimitNOFILE=1048576
+LimitNPROC=1048576
 
 [Install]
 WantedBy=multi-user.target

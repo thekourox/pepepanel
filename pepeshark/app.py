@@ -29,9 +29,14 @@ class Location(BaseModel):
     endpoint: str
     publicKey: str
 
-class InjectRequest(BaseModel):
+class KeyPair(BaseModel):
     private_key: str
     wg_address: str
+
+class InjectRequest(BaseModel):
+    key_pairs: Optional[List[KeyPair]] = None
+    private_key: Optional[str] = None
+    wg_address: Optional[str] = None
     core_id: str
     template_inbound_id: str
     locations: List[Location]
@@ -209,7 +214,23 @@ async def inject_to_pasargard(
             used_ports = {inb.get("port") for inb in xray_config["inbounds"] if isinstance(inb.get("port"), int)}
             next_port = max(used_ports) + 1 if used_ports else 10000
             
-            # Find max SOCKS port for wireproxy local SOCKS5 servers
+            # 2. Extract Key Pairs
+            import math
+            import re
+            key_pairs = getattr(request, 'key_pairs', None)
+            if not key_pairs:
+                if request.private_key and request.wg_address:
+                    key_pairs = [{"private_key": request.private_key, "wg_address": request.wg_address}]
+                else:
+                    raise HTTPException(status_code=400, detail="No valid Surfshark Key Pairs provided.")
+            
+            num_keys = len(key_pairs)
+            if num_keys == 0:
+                raise HTTPException(status_code=400, detail="Key pairs list is empty.")
+                
+            locations_per_key = math.ceil(len(request.locations) / num_keys)
+
+            # 3. Process each location
             used_socks_ports = [
                 server.get("port") 
                 for ob in xray_config["outbounds"] 
@@ -221,11 +242,15 @@ async def inject_to_pasargard(
             
             host_payloads = []
             
-            # 3. Update Core Config (Inbounds, Outbounds, Routing)
-            clean_wg_address = request.wg_address.split('/')[0] + "/32"
-            
-            for loc in request.locations:
-                safe_country = loc.country.replace(" ", "")
+            for i, loc in enumerate(request.locations):
+                # Calculate which Key Pair to use for this location
+                current_key_idx = i // locations_per_key
+                current_kp = key_pairs[current_key_idx]
+                kp_private_key = current_kp["private_key"] if isinstance(current_kp, dict) else current_kp.private_key
+                kp_wg_address = current_kp["wg_address"] if isinstance(current_kp, dict) else current_kp.wg_address
+                
+                clean_wg_address = kp_wg_address.split('/')[0] + "/32"
+                safe_country = re.sub(r'[^A-Za-z0-9]', '', loc.country)
                 
                 # Compute expected remark to match with existing host
                 def get_flag(cc: str) -> str:
@@ -267,7 +292,7 @@ async def inject_to_pasargard(
                 # Start wireproxy SOCKS5 process locally
                 wireproxy_manager.start_wireproxy(
                     tag=outbound_tag,
-                    private_key=request.private_key,
+                    private_key=kp_private_key,
                     wg_address=clean_wg_address,
                     endpoint=f"{loc.endpoint}:51820",
                     public_key=loc.publicKey,

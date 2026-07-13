@@ -3,8 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const coreSelector = document.getElementById('coreSelector');
     const inboundSelector = document.getElementById('inboundSelector');
     const injectBtn = document.getElementById('injectBtn');
-    const privateKeyInput = document.getElementById('privateKey');
-    const wgAddressInput = document.getElementById('wgAddress');
     const statusMessage = document.getElementById('statusMessage');
     const pasarguardUrlInput = document.getElementById('pasarguardUrl');
     const pasarguardTokenInput = document.getElementById('pasarguardToken');
@@ -188,20 +186,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     inboundSelector.addEventListener('change', validateForm);
-    privateKeyInput.addEventListener('input', validateForm);
-    wgAddressInput.addEventListener('input', validateForm);
     groupNameInput.addEventListener('input', validateForm);
 
-    function validateForm() {
-        const hasKey = privateKeyInput.value.trim().length > 10;
-        const hasWgAddr = wgAddressInput.value.trim().length > 5;
-        const hasCore = coreSelector.value !== '';
-        const hasInbound = inboundSelector.value !== '';
-        const hasLocation = document.querySelectorAll('#locationsList input:checked').length > 0;
-        const hasGroupName = groupNameInput.value.trim().length > 0;
+    let keyPairCount = 1;
+    const addKeyPairBtn = document.getElementById('addKeyPairBtn');
+    const keyPairsContainer = document.getElementById('keyPairsContainer');
 
-        injectBtn.disabled = !(hasKey && hasWgAddr && hasCore && hasInbound && hasLocation);
-        createGroupBtn.disabled = !(hasCore && hasLocation && hasGroupName);
+    function attachKeyPairListeners(group) {
+        group.querySelectorAll('input').forEach(inp => inp.addEventListener('input', validateForm));
+    }
+
+    // Attach listeners to initial key pair
+    document.querySelectorAll('.key-pair-group').forEach(attachKeyPairListeners);
+
+    addKeyPairBtn.addEventListener('click', () => {
+        keyPairCount++;
+        const div = document.createElement('div');
+        div.className = 'key-pair-group form-group';
+        div.style.cssText = 'border: 1px solid var(--border-color, #333); padding: 15px; margin-bottom: 15px; border-radius: 6px; background: var(--surface-color, #1f2937); position: relative;';
+        
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="color: var(--primary-color, #007bff); font-weight: bold; margin: 0;">Surfshark Key Pair ${keyPairCount}</label>
+                <button type="button" class="remove-key-btn" style="background: transparent; border: none; color: #e74c3c; cursor: pointer; font-size: 14px; font-weight: bold;">Remove</button>
+            </div>
+            <input type="password" class="pk-input" placeholder="Enter WireGuard Private Key" required style="margin-bottom: 10px; width: 100%; box-sizing: border-box;">
+            <input type="text" class="wg-input" placeholder="WireGuard Local Address (e.g. 10.14.0.2/16)" value="10.14.0.2/16" required style="width: 100%; box-sizing: border-box;">
+        `;
+        
+        div.querySelector('.remove-key-btn').addEventListener('click', () => {
+            div.remove();
+            validateForm();
+        });
+        
+        attachKeyPairListeners(div);
+        keyPairsContainer.appendChild(div);
+        validateForm();
+    });
+
+    function getValidKeyPairs() {
+        const pairs = [];
+        document.querySelectorAll('.key-pair-group').forEach(group => {
+            const pk = group.querySelector('.pk-input').value.trim();
+            const wg = group.querySelector('.wg-input').value.trim();
+            if (pk && wg) {
+                pairs.push({ private_key: pk, wg_address: wg });
+            }
+        });
+        return pairs;
+    }
+
+    function validateForm() {
+        const selectedLocations = document.querySelectorAll('input[type="checkbox"][data-location]:checked');
+        const hasCore = coreSelector.value !== "";
+        const hasInbound = inboundSelector.value !== "";
+        const validKeyPairs = getValidKeyPairs();
+        
+        if (selectedLocations.length > 0 && hasCore && hasInbound && validKeyPairs.length > 0) {
+            injectBtn.disabled = false;
+        } else {
+            injectBtn.disabled = true;
+        }
+        
+        if (selectedLocations.length > 0 && hasCore) {
+            createGroupBtn.disabled = false;
+        } else {
+            createGroupBtn.disabled = true;
+        }
         
         const toggleBtn = document.getElementById('toggleGroupBBtn');
         const enableBtn = document.getElementById('enableGroupBBtn');
@@ -223,9 +274,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedLocations = Array.from(document.querySelectorAll('#locationsList input:checked'))
             .map(cb => JSON.parse(cb.value));
 
+        const validKeyPairs = getValidKeyPairs();
         const payload = {
-            private_key: privateKeyInput.value.trim(),
-            wg_address: wgAddressInput.value.trim(),
+            key_pairs: validKeyPairs,
             core_id: coreSelector.value,
             template_inbound_id: inboundSelector.value,
             locations: selectedLocations,

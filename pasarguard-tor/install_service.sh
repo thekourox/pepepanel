@@ -28,6 +28,8 @@ Restart=always
 RestartSec=5
 RuntimeMaxSec=6h
 Environment=PYTHONUNBUFFERED=1
+LimitNOFILE=1048576
+LimitNPROC=1048576
 
 [Install]
 WantedBy=multi-user.target

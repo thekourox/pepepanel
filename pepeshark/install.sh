@@ -49,6 +49,8 @@ Environment="PATH=$VENV_DIR/bin"
 ExecStart=$VENV_DIR/bin/python3 app.py
 Restart=always
 RestartSec=5
+LimitNOFILE=1048576
+LimitNPROC=1048576
 
 [Install]
 WantedBy=multi-user.target
