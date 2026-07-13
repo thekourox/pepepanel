@@ -243,13 +243,18 @@ async def inject_pasargard(req: PasargardInjectRequest):
                 )
             ]
             
-            # CLEANUP OLD HOSTS IN DB TO PREVENT DUPLICATES
+            existing_hosts = {}
             try:
                 hosts_resp = await client.get(f"{host_url}/api/hosts", headers=auth_header, timeout=10.0)
                 if hosts_resp.status_code == 200:
                     for old_h in hosts_resp.json():
-                        if old_h.get("inbound_tag", "").startswith("grpA-in-"):
-                            await client.delete(f"{host_url}/api/host/{old_h['id']}", headers=auth_header, timeout=10.0)
+                        tag = old_h.get("inbound_tag", "")
+                        if tag.startswith("grpA-in-"):
+                            # Tag format: grpA-in-country-uid
+                            parts = tag.split("-")
+                            if len(parts) >= 3:
+                                country_part = parts[2].lower()
+                                existing_hosts[country_part] = old_h
             except Exception as e:
                 pass
 
@@ -274,24 +279,39 @@ async def inject_pasargard(req: PasargardInjectRequest):
             used_ports = {inb.get("port") for inb in xray_config["inbounds"] if isinstance(inb.get("port"), int)}
             next_port = max(used_ports) + 1 if used_ports else 10000
             
-            server_ip = req.server_ip
+            server_ip = "127.0.0.1"
             host_payloads = []
             
             for port, country in mapping.items():
-                country = country.upper()
-                uid = uuid.uuid4().hex[:6]
-                outbound_tag = f"grpA-out-{country.lower()}-{uid}"
-                cloned_tag = f"grpA-in-{country.lower()}-{uid}"
+                country_lower = country.lower()
+                existing_host = existing_hosts.get(country_lower)
                 
+                if existing_host:
+                    cloned_tag = existing_host.get("inbound_tag")
+                    # Extract uid from existing tag if possible
+                    parts = cloned_tag.split("-")
+                    uid = parts[3] if len(parts) >= 4 else uuid.uuid4().hex[:6]
+                    outbound_tag = f"grpA-out-{country_lower}-{uid}"
+                    new_uuid = existing_host.get("uuid", str(uuid.uuid4()))
+                    this_port = existing_host.get("port")
+                    is_new = False
+                else:
+                    uid = uuid.uuid4().hex[:6]
+                    outbound_tag = f"grpA-out-{country_lower}-{uid}"
+                    cloned_tag = f"grpA-in-{country_lower}-{uid}"
+                    new_uuid = str(uuid.uuid4())
+                    this_port = next_port
+                    next_port += 1
+                    is_new = True
+
                 # Clone Inbound for Core
                 new_inbound = copy.deepcopy(template_inbound)
                 new_inbound["tag"] = cloned_tag
-                new_inbound["port"] = next_port
+                new_inbound["port"] = this_port
                 
                 # Auto-open firewall port
-                os.system(f"ufw allow {next_port}/tcp >/dev/null 2>&1")
+                os.system(f"ufw allow {this_port}/tcp >/dev/null 2>&1")
                 
-                next_port += 1
                 xray_config["inbounds"].append(new_inbound)
                 
                 # Add SOCKS Outbound
@@ -308,29 +328,26 @@ async def inject_pasargard(req: PasargardInjectRequest):
                     "outboundTag": outbound_tag
                 })
                 
-                # Prepare Host Payload for API
-                full_country_name = COUNTRY_MAP.get(country, country)
-                flag = get_emoji(country)
-                new_remark = f"{full_country_name} {flag}"
-                new_host_payload = copy.deepcopy(template_host)
-                new_host_payload.pop("id", None)
-                
-                # Generate a unique UUID for this host so both DB and Xray sync
-                new_uuid = str(uuid.uuid4())
-                new_host_payload["uuid"] = new_uuid
-                
-                new_host_payload.pop("created_at", None)
-                new_host_payload.pop("updated_at", None)
-                new_host_payload["remark"] = new_remark
-                new_host_payload["inbound_tag"] = cloned_tag
-                new_host_payload["port"] = new_inbound["port"]
-                host_payloads.append(new_host_payload)
+                if is_new:
+                    # Prepare Host Payload for API
+                    full_country_name = COUNTRY_MAP.get(country.upper(), country.upper())
+                    flag = get_emoji(country.upper())
+                    new_remark = f"{full_country_name} {flag}"
+                    new_host_payload = copy.deepcopy(template_host)
+                    new_host_payload.pop("id", None)
+                    new_host_payload["uuid"] = new_uuid
+                    new_host_payload.pop("created_at", None)
+                    new_host_payload.pop("updated_at", None)
+                    new_host_payload["remark"] = new_remark
+                    new_host_payload["inbound_tag"] = cloned_tag
+                    new_host_payload["port"] = this_port
+                    host_payloads.append(new_host_payload)
                 
                 # Update Xray config to accept this specific UUID
                 if "settings" in new_inbound and "clients" in new_inbound["settings"] and len(new_inbound["settings"]["clients"]) > 0:
                     client_template = copy.deepcopy(new_inbound["settings"]["clients"][0])
                     client_template["id"] = new_uuid
-                    client_template["email"] = new_host_payload.get("email", new_uuid)
+                    client_template["email"] = existing_host.get("email", new_uuid) if not is_new else new_host_payload.get("email", new_uuid)
                     new_inbound["settings"]["clients"] = [client_template]
                 
             # 3. Save Core Config FIRST

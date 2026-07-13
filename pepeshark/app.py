@@ -172,7 +172,8 @@ async def inject_to_pasargard(
                 )
             ]
             
-            # CLEANUP OLD HOSTS IN DB TO PREVENT DUPLICATES
+            # 1. Fetch existing hosts to preserve group assignments
+            existing_hosts = []
             try:
                 hosts_resp = await client.get(
                     f"{x_pasarguard_host.rstrip('/')}/api/hosts",
@@ -181,15 +182,11 @@ async def inject_to_pasargard(
                 )
                 if hosts_resp.status_code == 200:
                     for old_h in hosts_resp.json():
-                        if old_h.get("inbound_tag", "").startswith("Surf-") or old_h.get("inbound_tag", "").startswith("B-In-"):
-                            # Delete old injected hosts
-                            await client.delete(
-                                f"{x_pasarguard_host.rstrip('/')}/api/host/{old_h['id']}",
-                                headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                                timeout=10.0
-                            )
+                        tag = old_h.get("inbound_tag", "")
+                        if tag.startswith("Surf-") or tag.startswith("B-In-"):
+                            existing_hosts.append(old_h)
             except Exception as e:
-                pass # If it fails, we just continue
+                pass
                 
             # 2. Fetch Template Host
             host_resp = await client.get(
@@ -229,10 +226,41 @@ async def inject_to_pasargard(
             
             for loc in request.locations:
                 safe_country = loc.country.replace(" ", "")
-                import random, string
-                suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-                outbound_tag = f"B-Out-{safe_country}-{suffix}"
-                cloned_tag = f"B-In-{safe_country}-{suffix}"
+                
+                # Compute expected remark to match with existing host
+                def get_flag(cc: str) -> str:
+                    if not cc or len(cc) != 2: return ""
+                    return chr(ord(cc[0].upper()) + 127397) + chr(ord(cc[1].upper()) + 127397)
+                
+                flag = get_flag(loc.countryCode)
+                location_part = f" - {loc.location}" if loc.location and loc.location.strip() != loc.country.strip() else ""
+                expected_remark = f"{loc.country}{location_part} {flag}"
+                
+                # Match with existing host
+                matched_host = None
+                for i, h in enumerate(existing_hosts):
+                    if h.get("remark") == expected_remark:
+                        matched_host = existing_hosts.pop(i)
+                        break
+                        
+                import random, string, uuid
+                
+                if matched_host:
+                    cloned_tag = matched_host.get("inbound_tag")
+                    parts = cloned_tag.split("-")
+                    suffix = parts[3] if len(parts) >= 4 else ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                    outbound_tag = f"B-Out-{safe_country}-{suffix}"
+                    new_uuid = matched_host.get("uuid", str(uuid.uuid4()))
+                    this_port = matched_host.get("port")
+                    is_new = False
+                else:
+                    suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                    outbound_tag = f"B-Out-{safe_country}-{suffix}"
+                    cloned_tag = f"B-In-{safe_country}-{suffix}"
+                    new_uuid = str(uuid.uuid4())
+                    this_port = next_port
+                    next_port += 1
+                    is_new = True
                 
                 # Start wireproxy SOCKS5 process locally
                 wireproxy_manager.start_wireproxy(
@@ -248,11 +276,11 @@ async def inject_to_pasargard(
                 import copy
                 new_inbound = copy.deepcopy(template_inbound)
                 new_inbound["tag"] = cloned_tag
-                new_inbound["port"] = next_port
+                new_inbound["port"] = this_port
                 xray_config["inbounds"].append(new_inbound)
                 
                 # Auto-open firewall port
-                os.system(f"ufw allow {next_port}/tcp >/dev/null 2>&1")
+                os.system(f"ufw allow {this_port}/tcp >/dev/null 2>&1")
                 
                 # Update Core Xray Config with SOCKS Outbound
                 xray_config["outbounds"] = [ob for ob in xray_config["outbounds"] if ob.get("tag") != outbound_tag]
@@ -272,7 +300,6 @@ async def inject_to_pasargard(
                 
                 # Increment ports for the next location in the loop
                 local_port += 1
-                next_port += 1
                 
                 xray_config["routing"]["rules"] = [r for r in xray_config["routing"]["rules"] if r.get("outboundTag") != outbound_tag]
                 new_rule = {
@@ -282,36 +309,35 @@ async def inject_to_pasargard(
                 }
                 xray_config["routing"]["rules"].insert(0, new_rule)
                 
-                # Prepare Host Payload (Group B OPSEC)
-                def get_flag(cc: str) -> str:
-                    if not cc or len(cc) != 2: return ""
-                    return chr(ord(cc[0].upper()) + 127397) + chr(ord(cc[1].upper()) + 127397)
-                
-                flag = get_flag(loc.countryCode)
-                location_part = f" - {loc.location}" if loc.location and loc.location.strip() != loc.country.strip() else ""
-                new_name_remark = f"{loc.country}{location_part} {flag}"
-                new_host_payload = copy.deepcopy(template_host)
-                new_host_payload.pop("id", None)
-                
-                # Generate a unique UUID for this host so both DB and Xray sync
-                import uuid
-                new_uuid = str(uuid.uuid4())
-                new_host_payload["uuid"] = new_uuid
-                
-                new_host_payload.pop("created_at", None)
-                new_host_payload.pop("updated_at", None)
-                new_host_payload["name"] = new_name_remark
-                new_host_payload["remark"] = new_name_remark
-                new_host_payload["inbound_tag"] = cloned_tag
-                new_host_payload["port"] = new_inbound["port"]
-                host_payloads.append(new_host_payload)
+                if is_new:
+                    # Prepare Host Payload (Group B OPSEC)
+                    new_host_payload = copy.deepcopy(template_host)
+                    new_host_payload.pop("id", None)
+                    new_host_payload["uuid"] = new_uuid
+                    new_host_payload.pop("created_at", None)
+                    new_host_payload.pop("updated_at", None)
+                    new_host_payload["remark"] = expected_remark
+                    new_host_payload["inbound_tag"] = cloned_tag
+                    new_host_payload["port"] = this_port
+                    host_payloads.append(new_host_payload)
                 
                 # Update Xray config to accept this specific UUID
                 if "settings" in new_inbound and "clients" in new_inbound["settings"] and len(new_inbound["settings"]["clients"]) > 0:
                     client_template = copy.deepcopy(new_inbound["settings"]["clients"][0])
                     client_template["id"] = new_uuid
-                    client_template["email"] = new_host_payload.get("email", new_uuid)
+                    client_template["email"] = matched_host.get("email", new_uuid) if not is_new else new_host_payload.get("email", new_uuid)
                     new_inbound["settings"]["clients"] = [client_template]
+                    
+            # Delete leftover hosts that were unselected to clean up DB
+            for leftover in existing_hosts:
+                try:
+                    await client.delete(
+                        f"{x_pasarguard_host.rstrip('/')}/api/host/{leftover['id']}",
+                        headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
+                        timeout=10.0
+                    )
+                except Exception:
+                    pass
             
             # 4. Save updated core config FIRST so the tags are registered
             core_data["config"] = xray_config
