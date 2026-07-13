@@ -196,31 +196,48 @@ document.addEventListener('DOMContentLoaded', () => {
         group.querySelectorAll('input').forEach(inp => inp.addEventListener('input', validateForm));
     }
 
-    // Attach listeners to initial key pair
-    document.querySelectorAll('.key-pair-group').forEach(attachKeyPairListeners);
-
-    addKeyPairBtn.addEventListener('click', () => {
-        keyPairCount++;
+    function createKeyPairElement(pkValue = "", wgValue = "10.14.0.2/16", isFirst = false) {
+        if (!isFirst) keyPairCount++;
+        const currentCount = isFirst ? 1 : keyPairCount;
+        
         const div = document.createElement('div');
         div.className = 'key-pair-group form-group';
         div.style.cssText = 'border: 1px solid var(--border-color, #333); padding: 15px; margin-bottom: 15px; border-radius: 6px; background: var(--surface-color, #1f2937); position: relative;';
         
         div.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <label style="color: var(--primary-color, #007bff); font-weight: bold; margin: 0;">Surfshark Key Pair ${keyPairCount}</label>
-                <button type="button" class="remove-key-btn" style="background: transparent; border: none; color: #e74c3c; cursor: pointer; font-size: 14px; font-weight: bold;">Remove</button>
+                <label style="color: var(--primary-color, #007bff); font-weight: bold; margin: 0;">Surfshark Key Pair ${currentCount}</label>
+                ${!isFirst ? '<button type="button" class="remove-key-btn" style="background: transparent; border: none; color: #e74c3c; cursor: pointer; font-size: 14px; font-weight: bold;">Remove</button>' : ''}
             </div>
-            <input type="password" class="pk-input" placeholder="Enter WireGuard Private Key" required style="margin-bottom: 10px; width: 100%; box-sizing: border-box;">
-            <input type="text" class="wg-input" placeholder="WireGuard Local Address (e.g. 10.14.0.2/16)" value="10.14.0.2/16" required style="width: 100%; box-sizing: border-box;">
+            <input type="password" class="pk-input" placeholder="Enter WireGuard Private Key" required style="margin-bottom: 10px; width: 100%; box-sizing: border-box;" value="${pkValue}">
+            <input type="text" class="wg-input" placeholder="WireGuard Local Address (e.g. 10.14.0.2/16)" value="${wgValue}" required style="width: 100%; box-sizing: border-box;">
         `;
         
-        div.querySelector('.remove-key-btn').addEventListener('click', () => {
-            div.remove();
-            validateForm();
-        });
+        if (!isFirst) {
+            div.querySelector('.remove-key-btn').addEventListener('click', () => {
+                div.remove();
+                validateForm();
+            });
+        }
         
         attachKeyPairListeners(div);
         keyPairsContainer.appendChild(div);
+    }
+
+    // Load from localStorage or initialize with one empty pair
+    const savedKeys = JSON.parse(localStorage.getItem('surfsharkKeyPairs') || '[]');
+    if (savedKeys && savedKeys.length > 0) {
+        keyPairsContainer.innerHTML = '';
+        savedKeys.forEach((kp, index) => {
+            createKeyPairElement(kp.private_key, kp.wg_address, index === 0);
+        });
+    } else {
+        keyPairsContainer.innerHTML = '';
+        createKeyPairElement('', '10.14.0.2/16', true);
+    }
+
+    addKeyPairBtn.addEventListener('click', () => {
+        createKeyPairElement();
         validateForm();
     });
 
@@ -237,10 +254,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function validateForm() {
-        const selectedLocations = document.querySelectorAll('input[type="checkbox"][data-location]:checked');
+        const selectedLocations = document.querySelectorAll('#locationsList input:checked');
         const hasCore = coreSelector.value !== "";
         const hasInbound = inboundSelector.value !== "";
         const validKeyPairs = getValidKeyPairs();
+        
+        // Save to local storage for persistence
+        if (validKeyPairs.length > 0) {
+            localStorage.setItem('surfsharkKeyPairs', JSON.stringify(validKeyPairs));
+        }
         
         if (selectedLocations.length > 0 && hasCore && hasInbound && validKeyPairs.length > 0) {
             injectBtn.disabled = false;
