@@ -100,7 +100,7 @@ fi
 
 # 4. Setup Python Environment
 echo -e "\n${YELLOW}[*] Setting up Python environment...${NC}"
-pip3 install flask requests werkzeug > /dev/null 2>&1
+pip3 install flask requests werkzeug --break-system-packages > /dev/null 2>&1 || pip3 install flask requests werkzeug > /dev/null 2>&1
 
 # 5. Execute Sub-Installers (Tor & Surfshark)
 echo -e "${YELLOW}[*] Executing sub-installers for Tor and Surfshark...${NC}"
