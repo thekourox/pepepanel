@@ -261,6 +261,8 @@ async def inject_to_pasargard(
                     this_port = next_port
                     next_port += 1
                     is_new = True
+                # Kill existing proxy if it's running to prevent port conflicts and zombies
+                wireproxy_manager.stop_surfshark_proxies([outbound_tag])
                 
                 # Start wireproxy SOCKS5 process locally
                 wireproxy_manager.start_wireproxy(
