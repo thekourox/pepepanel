@@ -140,7 +140,7 @@ class TorInstance:
                 tor_cmd=self.tor_cmd,
                 take_ownership=False,
                 init_msg_handler=handle_init_msg,
-                timeout=None
+                timeout=60
             )
             self.active = True
             dashboard_state['instances'][self.country]['status'] = "🟢 Online. Testing..."
@@ -256,10 +256,32 @@ def monitor_instance(instance):
         'http': f'socks5h://127.0.0.1:{instance.socks_port}',
         'https': f'socks5h://127.0.0.1:{instance.socks_port}'
     }
-    while instance.active:
+    
+    consecutive_failures = 0
+    
+    while True:
+        if not instance.active:
+            # Check if it's currently trying to start (status contains Bootstrapping)
+            status = dashboard_state['instances'][instance.country]['status']
+            if "Bootstrapping" in status and "Opt Fail" not in status and "🔴" not in status:
+                time.sleep(5)
+                continue
+                
+            # If it's completely dead or failed to start, hard restart it
+            logger.warning(f"[{instance.country}] Instance inactive or timed out. Hard restarting...")
+            dashboard_state['instances'][instance.country]['status'] = "🔴 Dead. Restarting..."
+            instance.stop()
+            time.sleep(2)
+            # Run start in a separate thread so it doesn't block the monitor loop
+            threading.Thread(target=instance.start, daemon=True).start()
+            consecutive_failures = 0
+            time.sleep(15)
+            continue
+            
         success, ttfb, speed_kbs, actual_country = measure_speed_and_ping(instance)
         
         if success:
+            consecutive_failures = 0
             if actual_country and actual_country != instance.country:
                 logger.warning(f"[{instance.country}] Mismatched Country! Expected {instance.country}, got {actual_country}.")
                 instance.request_new_ip(f"Wrong Country ({actual_country.upper()})")
@@ -281,9 +303,20 @@ def monitor_instance(instance):
                 dashboard_state['instances'][instance.country]['status'] = "🟢 Optimized"
                 time.sleep(15)
         else:
+            consecutive_failures += 1
             dashboard_state['instances'][instance.country]['ping'] = "Timeout"
             dashboard_state['instances'][instance.country]['speed'] = "0.0 KB/s"
-            instance.request_new_ip("Connection Timeout")
+            
+            if consecutive_failures >= 3:
+                logger.warning(f"[{instance.country}] 3 consecutive timeouts. Hard restarting...")
+                dashboard_state['instances'][instance.country]['status'] = "🔴 Hard Restarting..."
+                instance.stop()
+                time.sleep(2)
+                threading.Thread(target=instance.start, daemon=True).start()
+                consecutive_failures = 0
+            else:
+                instance.request_new_ip("Connection Timeout")
+                
             time.sleep(5)
 
 instances = []

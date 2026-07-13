@@ -26,6 +26,7 @@ WorkingDirectory=$DIR
 ExecStart=/bin/bash setup_and_run.sh
 Restart=always
 RestartSec=5
+RuntimeMaxSec=6h
 Environment=PYTHONUNBUFFERED=1
 
 [Install]
