@@ -381,6 +381,16 @@ def discover_exit_countries(tor_cmd):
         'ClientPreferIPv6ORPort': '0'
     }
     
+    # Bypass Hetzner DataCenter blocks for the Discovery Node using WARP
+    try:
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(('127.0.0.1', 40000)) == 0:
+                config['Socks5Proxy'] = '127.0.0.1:40000'
+                logger.info("[discovery] Bypassing DataCenter Blocks: Routing Discovery Node through Cloudflare WARP (Port 40000)")
+    except Exception:
+        pass
+    
     if os.path.exists(geoip_path) and os.path.exists(geoip6_path):
         logger.info(f"Local GeoIP files found. Configuring Tor to use them: {geoip_path}")
         config['GeoIPFile'] = geoip_path
