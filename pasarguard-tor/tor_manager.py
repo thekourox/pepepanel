@@ -108,7 +108,12 @@ class TorInstance:
             'GeoIPFile': os.path.join(os.getcwd(), 'data', 'geoip').replace('\\', '/'),
             'GeoIPv6File': os.path.join(os.getcwd(), 'data', 'geoip6').replace('\\', '/'),
             'ClientUseIPv6': '0',
-            'ClientPreferIPv6ORPort': '0'
+            'ClientPreferIPv6ORPort': '0',
+            'UseEntryGuards': '0',
+            'EnforceDistinctSubnets': '0',
+            'CircuitBuildTimeout': '10',
+            'KeepalivePeriod': '15',
+            'MaxCircuitDirtiness': '60'
         }
         
         if HARDWARE_TIER == 'LOW':
@@ -378,7 +383,12 @@ def discover_exit_countries(tor_cmd):
         'CookieAuthentication': '1',
         'DataDirectory': discovery_data_dir.replace('\\', '/'),
         'ClientUseIPv6': '0',
-        'ClientPreferIPv6ORPort': '0'
+        'ClientPreferIPv6ORPort': '0',
+        'UseEntryGuards': '0',
+        'EnforceDistinctSubnets': '0',
+        'CircuitBuildTimeout': '10',
+        'KeepalivePeriod': '15',
+        'MaxCircuitDirtiness': '60'
     }
     
     # Bypass Hetzner DataCenter blocks for the Discovery Node using WARP
