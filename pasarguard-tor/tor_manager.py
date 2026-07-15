@@ -111,9 +111,9 @@ class TorInstance:
             'ClientPreferIPv6ORPort': '0',
             'UseEntryGuards': '0',
             'EnforceDistinctSubnets': '0',
-            'CircuitBuildTimeout': '10',
-            'KeepalivePeriod': '15',
-            'MaxCircuitDirtiness': '60'
+            'CircuitBuildTimeout': '30',
+            'KeepalivePeriod': '60',
+            'MaxCircuitDirtiness': '120'
         }
         
         if HARDWARE_TIER == 'LOW':
@@ -386,9 +386,9 @@ def discover_exit_countries(tor_cmd):
         'ClientPreferIPv6ORPort': '0',
         'UseEntryGuards': '0',
         'EnforceDistinctSubnets': '0',
-        'CircuitBuildTimeout': '10',
-        'KeepalivePeriod': '15',
-        'MaxCircuitDirtiness': '60'
+        'CircuitBuildTimeout': '30',
+        'KeepalivePeriod': '60',
+        'MaxCircuitDirtiness': '120'
     }
     
     # Bypass Hetzner DataCenter blocks for the Discovery Node using WARP
