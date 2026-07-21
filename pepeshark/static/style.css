@@ -2,6 +2,44 @@
    PepeShark v2 — Premium Dark Panel
    ============================================ */
 
+/* ---- Injection Status Banner ---- */
+.injection-banner {
+    display: flex; align-items: center; gap: 16px;
+    background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-lg, 16px); padding: 16px 20px;
+    margin-bottom: 20px; animation: fadeIn 0.3s ease;
+}
+.banner-icon { font-size: 28px; }
+.banner-info { flex: 1; display: flex; flex-direction: column; }
+.banner-title { font-size: 15px; font-weight: 700; color: #34d399; }
+.banner-detail { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.banner-stats { display: flex; gap: 12px; }
+.stat-alive { font-size: 13px; font-weight: 600; color: #10b981; background: rgba(16,185,129,0.1); padding: 4px 12px; border-radius: 999px; }
+.stat-dead { font-size: 13px; font-weight: 600; color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 12px; border-radius: 999px; }
+
+/* ---- Confirmation Modal ---- */
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+    z-index: 1000; animation: fadeIn 0.2s ease;
+}
+.modal-box {
+    background: #1e293b; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; padding: 32px; max-width: 440px; width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-box h3 { font-size: 18px; font-weight: 700; color: #f59e0b; margin-bottom: 12px; }
+.modal-box p { font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 24px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.modal-actions button {
+    padding: 10px 20px; border-radius: 999px; border: none;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.modal-cancel { background: rgba(255,255,255,0.05); color: #94a3b8; }
+.modal-cancel:hover { background: rgba(255,255,255,0.1); }
+.modal-confirm { background: #f59e0b; color: #0f172a; }
+.modal-confirm:hover { background: #fbbf24; }
+
 :root {
     --sidebar-w: 240px;
     --bg-base: #0b0f19;

@@ -13,9 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Monitor elements
     const monitorActive = document.getElementById('monitorActive');
-    const monitorLocations = document.getElementById('monitorLocations');
+    const monitorDead = document.getElementById('monitorDead');
     const monitorKeys = document.getElementById('monitorKeys');
     const locationCounter = document.getElementById('locationCounter');
+    
+    // Injection state
+    let isAlreadyInjected = false;
 
     // ============ Sidebar Navigation ============
     const navItems = document.querySelectorAll('.nav-item');
@@ -68,7 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const locResponse = await fetch('/api/surfshark/locations');
             const locations = await locResponse.json();
             renderLocations(locations);
-            if (monitorLocations) monitorLocations.textContent = locations.length;
+
+            // Fetch injection status
+            await fetchInjectionStatus();
 
             if (!pasarguardTokenInput.value || !pasarguardUrlInput.value) {
                 coreSelector.innerHTML = '<option value="">Enter Settings first...</option>';
@@ -326,8 +331,45 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cleanupBtn) cleanupBtn.disabled = !hasCore;
     }
 
-    // ============ Inject ============
+    // ============ Inject (with re-inject guard) ============
+    function showReInjectWarning(btn) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `
+                <div class="modal-box">
+                    <h3>⚠️ Re-Injection Warning</h3>
+                    <p>An injection is already active with <strong>${isAlreadyInjected}</strong> locations configured.
+                    Re-injecting will <strong>recreate all inbounds/hosts</strong> in PasarGuard, which may remove them from subscription groups.
+                    <br><br>Are you sure you want to proceed?</p>
+                    <div class="modal-actions">
+                        <button class="modal-cancel">Cancel</button>
+                        <button class="modal-confirm">Yes, Re-Inject</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            overlay.querySelector('.modal-cancel').addEventListener('click', () => {
+                overlay.remove();
+                resolve(false);
+            });
+            overlay.querySelector('.modal-confirm').addEventListener('click', () => {
+                overlay.remove();
+                resolve(true);
+            });
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) { overlay.remove(); resolve(false); }
+            });
+        });
+    }
+
     async function doInject(btn) {
+        // Guard: if already injected, show warning
+        if (isAlreadyInjected) {
+            const confirmed = await showReInjectWarning(btn);
+            if (!confirmed) return;
+        }
+
         const origText = btn.textContent;
         btn.disabled = true;
         btn.textContent = 'Injecting...';
@@ -356,6 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (response.ok) {
                 showStatus(result.message || 'Injected successfully!', 'success');
+                await fetchInjectionStatus(); // refresh status
             } else {
                 showStatus(`Error: ${result.detail || 'Injection failed.'}`, 'error');
             }
@@ -516,6 +559,38 @@ document.addEventListener('DOMContentLoaded', () => {
     if (fetchLogsBtn) fetchLogsBtn.addEventListener('click', fetchLogs);
     if (fetchLogsBtnFull) fetchLogsBtnFull.addEventListener('click', fetchLogs);
 
+    // ============ Injection Status Polling ============
+    async function fetchInjectionStatus() {
+        try {
+            const resp = await fetch('/api/injection/status');
+            const data = await resp.json();
+            
+            const banner = document.getElementById('injectionBanner');
+            const bannerDetail = document.getElementById('bannerDetail');
+            const bannerAlive = document.getElementById('bannerAlive');
+            const bannerDead = document.getElementById('bannerDead');
+            
+            if (data.injected) {
+                isAlreadyInjected = data.location_count;
+                if (banner) {
+                    banner.style.display = 'flex';
+                    bannerDetail.textContent = `${data.location_count} locations configured • ${data.total_configs} configs on disk`;
+                    bannerAlive.textContent = `${data.alive} alive`;
+                    bannerDead.textContent = `${data.dead} dead`;
+                }
+                if (monitorActive) monitorActive.textContent = data.alive;
+                if (monitorDead) monitorDead.textContent = data.dead;
+            } else {
+                isAlreadyInjected = false;
+                if (banner) banner.style.display = 'none';
+                if (monitorActive) monitorActive.textContent = '0';
+                if (monitorDead) monitorDead.textContent = '0';
+            }
+        } catch (e) {
+            // silent
+        }
+    }
+
     // ============ Status Toast ============
     let toastTimer = null;
     function showStatus(msg, type) {
@@ -531,6 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============ Boot ============
     fetchLogs();
     setInterval(fetchLogs, 3000);
+    setInterval(fetchInjectionStatus, 15000); // Poll health every 15s
     initializeApp();
     updateMonitorKeys();
 });

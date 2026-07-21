@@ -54,9 +54,54 @@ class LifecycleToggleRequest(BaseModel):
 class LifecycleCleanupRequest(BaseModel):
     core_id: str
 
+INJECTION_STATE_FILE = os.path.join(os.path.dirname(__file__), "injection_state.json")
+
+def load_injection_state():
+    if os.path.exists(INJECTION_STATE_FILE):
+        try:
+            with open(INJECTION_STATE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return None
+
+def save_injection_state(location_count, port_map):
+    import datetime
+    state = {
+        "injected": True,
+        "location_count": location_count,
+        "injected_at": datetime.datetime.now().isoformat(),
+        "port_map": port_map  # {socks_port: tag}
+    }
+    with open(INJECTION_STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_gui(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
+
+@app.get("/api/injection/status")
+def get_injection_status():
+    """Check if injection was already done and return proxy health stats."""
+    state = load_injection_state()
+    active_proxies = wireproxy_manager.get_active_proxies()
+    
+    alive = 0
+    dead = 0
+    for tag, port in active_proxies.items():
+        if wireproxy_manager.health_check_proxy(port, timeout=2.0):
+            alive += 1
+        else:
+            dead += 1
+    
+    return {
+        "injected": state is not None and state.get("injected", False),
+        "location_count": state.get("location_count", 0) if state else 0,
+        "injected_at": state.get("injected_at", "") if state else "",
+        "total_configs": len(active_proxies),
+        "alive": alive,
+        "dead": dead
+    }
 
 @app.get("/api/surfshark/locations")
 def get_surfshark_locations():
@@ -396,7 +441,13 @@ async def inject_to_pasargard(
                 timeout=120.0
             )
             
-            return {"status": "success", "message": "Injected successfully via Wireproxy and restarted core!"}
+            # Save injection state so we know not to re-inject
+            port_map = {}
+            for conf_tag, conf_port in wireproxy_manager.get_active_proxies().items():
+                port_map[str(conf_port)] = conf_tag
+            save_injection_state(len(request.locations), port_map)
+            
+            return {"status": "success", "message": f"Injected {len(request.locations)} locations successfully! Core restarted."}
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PasarGuard API Error: {str(e)}")
