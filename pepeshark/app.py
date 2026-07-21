@@ -97,7 +97,7 @@ async def get_cores(
             resp = await client.get(
                 f"{x_pasarguard_host.rstrip('/')}/api/cores/simple",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                timeout=10.0
+                timeout=120.0
             )
             resp.raise_for_status()
             data = resp.json()
@@ -120,7 +120,7 @@ async def get_inbounds(
             resp = await client.get(
                 f"{x_pasarguard_host.rstrip('/')}/api/hosts",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                timeout=10.0
+                timeout=120.0
             )
             resp.raise_for_status()
             data = resp.json()
@@ -151,7 +151,7 @@ async def inject_to_pasargard(
             core_resp = await client.get(
                 f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                timeout=10.0
+                timeout=120.0
             )
             core_resp.raise_for_status()
             core_data = core_resp.json()
@@ -183,7 +183,7 @@ async def inject_to_pasargard(
                 hosts_resp = await client.get(
                     f"{x_pasarguard_host.rstrip('/')}/api/hosts",
                     headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                    timeout=10.0
+                    timeout=120.0
                 )
                 if hosts_resp.status_code == 200:
                     for old_h in hosts_resp.json():
@@ -197,7 +197,7 @@ async def inject_to_pasargard(
             host_resp = await client.get(
                 f"{x_pasarguard_host.rstrip('/')}/api/host/{request.template_inbound_id}",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                timeout=10.0
+                timeout=120.0
             )
             host_resp.raise_for_status()
             template_host = host_resp.json()
@@ -361,7 +361,7 @@ async def inject_to_pasargard(
                     await client.delete(
                         f"{x_pasarguard_host.rstrip('/')}/api/host/{leftover['id']}",
                         headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                        timeout=10.0
+                        timeout=120.0
                     )
                 except Exception:
                     pass
@@ -372,7 +372,7 @@ async def inject_to_pasargard(
                 f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}?restart_nodes=false",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
                 json=core_data,
-                timeout=10.0
+                timeout=120.0
             )
             if not update_core_resp.is_success:
                 raise HTTPException(status_code=400, detail=f"Failed to update core config: {update_core_resp.text}")
@@ -383,7 +383,7 @@ async def inject_to_pasargard(
                     f"{x_pasarguard_host.rstrip('/')}/api/host/",
                     headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
                     json=payload,
-                    timeout=10.0
+                    timeout=120.0
                 )
                 if not create_host_resp.is_success:
                     raise HTTPException(status_code=400, detail=f"Failed to create host: {create_host_resp.text}")
@@ -393,7 +393,7 @@ async def inject_to_pasargard(
                 f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}?restart_nodes=true",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
                 json=core_data,
-                timeout=10.0
+                timeout=120.0
             )
             
             return {"status": "success", "message": "Injected successfully via Wireproxy and restarted core!"}
@@ -415,7 +415,7 @@ async def toggle_group_b(
             resp = await client.get(
                 f"{x_pasarguard_host.rstrip('/')}/api/hosts",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                timeout=10.0
+                timeout=120.0
             )
             resp.raise_for_status()
             hosts = resp.json()
@@ -429,7 +429,7 @@ async def toggle_group_b(
                         f"{x_pasarguard_host.rstrip('/')}/api/host/{host_id}",
                         headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
                         json=host,
-                        timeout=10.0
+                        timeout=120.0
                     )
             return {"status": "success", "message": f"Group B toggled to {'Enabled' if request.enable else 'Disabled'}"}
     except Exception as e:
@@ -450,7 +450,7 @@ async def cleanup_group_b(
             resp = await client.get(
                 f"{x_pasarguard_host.rstrip('/')}/api/hosts",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                timeout=10.0
+                timeout=120.0
             )
             resp.raise_for_status()
             hosts = resp.json()
@@ -459,14 +459,14 @@ async def cleanup_group_b(
                     await client.delete(
                         f"{x_pasarguard_host.rstrip('/')}/api/host/{host['id']}",
                         headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                        timeout=10.0
+                        timeout=120.0
                     )
                     
             # 2. Strip Core Config
             core_resp = await client.get(
                 f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
-                timeout=10.0
+                timeout=120.0
             )
             core_resp.raise_for_status()
             core_data = core_resp.json()
@@ -489,7 +489,7 @@ async def cleanup_group_b(
                 f"{x_pasarguard_host.rstrip('/')}/api/core/{request.core_id}?restart_nodes=true",
                 headers={"Authorization": f"Bearer {authorization.replace('Bearer ', '')}"},
                 json=core_data,
-                timeout=10.0
+                timeout=120.0
             )
             
             # 4. Stop Wireproxies

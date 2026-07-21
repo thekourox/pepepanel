@@ -184,7 +184,7 @@ async def fetch_cores_api(req: FetchCoresRequest):
             auth_header = {"Authorization": f"Bearer {req.pasargard_token.replace('Bearer ', '')}"}
             host_url = req.pasargard_url.rstrip('/')
             
-            resp = await client.get(f"{host_url}/api/cores/simple", headers=auth_header, timeout=10.0)
+            resp = await client.get(f"{host_url}/api/cores/simple", headers=auth_header, timeout=120.0)
             if not resp.is_success:
                 return {"status": "error", "message": f"Failed to fetch cores: {resp.text}"}
                 
@@ -200,7 +200,7 @@ async def fetch_inbounds_api(req: FetchInboundsRequest):
             auth_header = {"Authorization": f"Bearer {req.pasargard_token.replace('Bearer ', '')}"}
             host_url = req.pasargard_url.rstrip('/')
             
-            resp = await client.get(f"{host_url}/api/hosts", headers=auth_header, timeout=10.0)
+            resp = await client.get(f"{host_url}/api/hosts", headers=auth_header, timeout=120.0)
             if not resp.is_success:
                 return {"status": "error", "message": f"Failed to fetch inbounds: {resp.text}"}
                 
@@ -235,7 +235,7 @@ async def inject_pasargard(req: PasargardInjectRequest):
             host_url = req.pasargard_url.rstrip('/')
             
             # 1. Fetch Core Config
-            core_resp = await client.get(f"{host_url}/api/core/{req.core_id}", headers=auth_header, timeout=10.0)
+            core_resp = await client.get(f"{host_url}/api/core/{req.core_id}", headers=auth_header, timeout=120.0)
             if not core_resp.is_success:
                 return {"status": "error", "message": f"Failed to fetch Core {req.core_id}: {core_resp.text}"}
             
@@ -260,7 +260,7 @@ async def inject_pasargard(req: PasargardInjectRequest):
             
             existing_hosts = {}
             try:
-                hosts_resp = await client.get(f"{host_url}/api/hosts", headers=auth_header, timeout=10.0)
+                hosts_resp = await client.get(f"{host_url}/api/hosts", headers=auth_header, timeout=120.0)
                 if hosts_resp.status_code == 200:
                     for old_h in hosts_resp.json():
                         tag = old_h.get("inbound_tag", "")
@@ -275,7 +275,7 @@ async def inject_pasargard(req: PasargardInjectRequest):
 
             
             # 2. Fetch Template Host
-            host_resp = await client.get(f"{host_url}/api/host/{req.template_inbound_id}", headers=auth_header, timeout=10.0)
+            host_resp = await client.get(f"{host_url}/api/host/{req.template_inbound_id}", headers=auth_header, timeout=120.0)
             if not host_resp.is_success:
                 return {"status": "error", "message": f"Failed to fetch Host {req.template_inbound_id}: {host_resp.text}"}
                 
@@ -369,14 +369,14 @@ async def inject_pasargard(req: PasargardInjectRequest):
             core_data["config"] = xray_config
             update_core_resp = await client.put(
                 f"{host_url}/api/core/{req.core_id}?restart_nodes=false",
-                headers=auth_header, json=core_data, timeout=10.0
+                headers=auth_header, json=core_data, timeout=120.0
             )
             if not update_core_resp.is_success:
                 return {"status": "error", "message": f"Failed to save core config: {update_core_resp.text}"}
                 
             # 4. Create Hosts
             for payload in host_payloads:
-                c_resp = await client.post(f"{host_url}/api/host/", headers=auth_header, json=payload, timeout=10.0)
+                c_resp = await client.post(f"{host_url}/api/host/", headers=auth_header, json=payload, timeout=120.0)
                 if not c_resp.is_success:
                     print(f"Failed to create host {payload.get('remark')}: {c_resp.text}")
                     
@@ -395,7 +395,7 @@ async def handle_lifecycle(req: LifecycleRequest):
             host_url = req.pasargard_url.rstrip('/')
             
             # Fetch all hosts
-            list_resp = await client.get(f"{host_url}/api/hosts", headers=auth_header, timeout=10.0)
+            list_resp = await client.get(f"{host_url}/api/hosts", headers=auth_header, timeout=120.0)
             if not list_resp.is_success:
                 return {"status": "error", "message": f"Failed to fetch hosts: {list_resp.text}"}
                 
