@@ -48,6 +48,21 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    import core
+    # Auto-start with 60 instances
+    core.start_network(
+        max_instances=60,
+        ping_interval=30,
+        ram_limit_mb=30,
+        bandwidth_limit_kb=0,
+        worker_count=0,
+        selected_countries="",
+        host_country_override=""
+    )
+
 @app.get("/")
 def get_index():
     import os
