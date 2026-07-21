@@ -560,6 +560,58 @@ def startup_event():
         wireproxy_manager.recover_all_proxies()
     except Exception as e:
         print(f"Failed to auto-recover wireproxies: {e}")
+    
+    # Start Watchdog background thread
+    import threading
+    watchdog_thread = threading.Thread(target=_watchdog_loop, daemon=True)
+    watchdog_thread.start()
+    print("Surfshark Watchdog started (checking every 2 minutes).")
+
+def _watchdog_loop():
+    """Background loop: every 2 minutes, check all active proxies and restart dead ones."""
+    import time
+    INTERVAL = 120  # 2 minutes
+    MAX_CONSECUTIVE_FAILS = 2  # Restart after 2 consecutive failed checks
+    
+    fail_counts = {}  # tag -> consecutive fail count
+    
+    # Wait 60 seconds on first boot to let everything stabilize
+    time.sleep(60)
+    
+    while True:
+        try:
+            proxies = wireproxy_manager.get_active_proxies()
+            
+            if not proxies:
+                time.sleep(INTERVAL)
+                continue
+            
+            dead_count = 0
+            alive_count = 0
+            
+            for tag, port in proxies.items():
+                is_alive = wireproxy_manager.health_check_proxy(port)
+                
+                if is_alive:
+                    alive_count += 1
+                    fail_counts[tag] = 0  # Reset on success
+                else:
+                    fail_counts[tag] = fail_counts.get(tag, 0) + 1
+                    
+                    if fail_counts[tag] >= MAX_CONSECUTIVE_FAILS:
+                        print(f"[Watchdog] {tag} (port {port}) dead for {fail_counts[tag]} checks. Restarting...")
+                        wireproxy_manager.restart_single_proxy(tag)
+                        fail_counts[tag] = 0  # Reset after restart
+                        dead_count += 1
+                        time.sleep(1)  # Small gap between restarts
+            
+            if dead_count > 0:
+                print(f"[Watchdog] Cycle complete: {alive_count} alive, {dead_count} restarted.")
+                
+        except Exception as e:
+            print(f"[Watchdog] Error during health check cycle: {e}")
+        
+        time.sleep(INTERVAL)
 
 if __name__ == "__main__":
     import uvicorn

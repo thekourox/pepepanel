@@ -3,129 +3,313 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PepeShark</title>
+    <title>PepeShark — WireGuard Bridge</title>
+    <meta name="description" content="PepeShark WireGuard Bridge Panel - Seamlessly bridge Surfshark WireGuard with Xray cores">
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-<!-- UNIFIED GATEWAY TOP NAVIGATION INJECTION -->
-<div style="background-color: #1f2937; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; border-bottom: 2px solid #374151; margin-bottom: 20px;">
-    <div style="font-weight: bold; font-size: 16px;">
-        <span style="color: #007bff;">Unified</span> Gateway
+    <!-- Ambient Background -->
+    <div class="ambient-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
     </div>
-    <div>
-        <a href="/surfshark/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #374151; border-radius: 4px; margin-right: 10px; font-size: 14px;">Switch to Surfshark</a>
-        <a href="/tor/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #374151; border-radius: 4px; margin-right: 10px; font-size: 14px;">Switch to Tor</a>
-        <a href="/" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #007bff; border-radius: 4px; font-weight: bold; font-size: 14px;">Dashboard</a>
-        <a href="/logout" style="color: white; text-decoration: none; padding: 5px 12px; background-color: #dc3545; border-radius: 4px; margin-left: 10px; font-size: 14px;">Logout</a>
-    </div>
-</div>
-<!-- END GATEWAY NAVIGATION INJECTION -->
-    <div class="background-animation"></div>
-    <div class="container">
-        <header>
-            <h1>PepeShark - WireGuard Bridge</h1>
-            <p>Seamlessly bridge Surfshark WireGuard with your Xray cores.</p>
-        </header>
 
-        <main>
-            <section class="card settings-section">
-                <h2>0. PasarGuard API Settings</h2>
-                <div class="form-group">
-                    <label for="pasarguardUrl">Panel URL</label>
-                    <input type="text" id="pasarguardUrl" placeholder="http://127.0.0.1:8000" value="http://127.0.0.1:8000">
-                </div>
-                <div class="form-group">
-                    <label for="pasarguardToken">Admin API Token</label>
-                    <input type="password" id="pasarguardToken" placeholder="Enter your PasarGuard Admin Token" required>
-                </div>
-                <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                    <input type="checkbox" id="isLocal" checked style="width: auto; margin: 0;">
-                    <label for="isLocal" style="margin: 0;">PasarGuard is on THIS server (Local)</label>
-                </div>
-            </section>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🦈</div>
+            <span class="brand-text">PepeShark</span>
+        </div>
 
-            <section class="card config-section">
-                <h2>1. Core Configuration</h2>
-                <div id="keyPairsContainer">
-                    <div class="key-pair-group form-group" style="border: 1px solid var(--border-color, #333); padding: 15px; margin-bottom: 15px; border-radius: 6px; background: var(--surface-color, #1f2937);">
-                        <label style="color: var(--primary-color, #007bff); font-weight: bold; margin-bottom: 10px; display: block;">Surfshark Key Pair 1</label>
-                        <input type="password" class="pk-input" placeholder="Enter WireGuard Private Key" required style="margin-bottom: 10px; width: 100%; box-sizing: border-box;">
-                        <input type="text" class="wg-input" placeholder="WireGuard Local Address (e.g. 10.14.0.2/16)" value="10.14.0.2/16" required style="width: 100%; box-sizing: border-box;">
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-section="dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-section="settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>Settings</span>
+            </a>
+            <a href="#" class="nav-item" data-section="locations">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/></svg>
+                <span>Locations</span>
+            </a>
+            <a href="#" class="nav-item" data-section="lifecycle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                <span>Lifecycle</span>
+            </a>
+            <a href="#" class="nav-item" data-section="logs">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span>Logs</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="nav-links-external">
+                <a href="/tor/" class="ext-link" title="Switch to Tor Panel">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Tor Panel</span>
+                </a>
+                <a href="/" class="ext-link" title="Back to Gateway">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    <span>Gateway</span>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button class="menu-toggle" id="menuToggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="brand-icon-sm">🦈</div>
+        <span>PepeShark</span>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- SECTION: Dashboard -->
+        <section class="content-section active" id="sec-dashboard">
+            <div class="section-header">
+                <h1>Dashboard</h1>
+                <p class="section-subtitle">Overview of your WireGuard bridge infrastructure</p>
+            </div>
+
+            <!-- Monitoring Cards Row -->
+            <div class="monitor-grid">
+                <div class="monitor-card">
+                    <div class="monitor-icon" style="--accent: #10b981;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </div>
+                    <div class="monitor-info">
+                        <span class="monitor-label">Active Proxies</span>
+                        <span class="monitor-value" id="monitorActive">—</span>
                     </div>
                 </div>
-                <button type="button" id="addKeyPairBtn" style="background: transparent; border: 1px dashed var(--primary-color, #007bff); color: var(--primary-color, #007bff); width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">+ Add Another Key Pair</button>
-                
-                <div class="form-group">
-                    <label for="coreSelector">Target Pasargard Core</label>
-                    <select id="coreSelector" disabled>
-                        <option value="">Loading Cores...</option>
-                    </select>
+                <div class="monitor-card">
+                    <div class="monitor-icon" style="--accent: #3b82f6;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/></svg>
+                    </div>
+                    <div class="monitor-info">
+                        <span class="monitor-label">Locations</span>
+                        <span class="monitor-value" id="monitorLocations">—</span>
+                    </div>
                 </div>
-
-                <div class="form-group">
-                    <label for="inboundSelector">Template Inbound (To Clone)</label>
-                    <select id="inboundSelector" disabled>
-                        <option value="">Select a Core First...</option>
-                    </select>
+                <div class="monitor-card">
+                    <div class="monitor-icon" style="--accent: #f59e0b;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    </div>
+                    <div class="monitor-info">
+                        <span class="monitor-label">Key Pairs</span>
+                        <span class="monitor-value" id="monitorKeys">—</span>
+                    </div>
                 </div>
-            </section>
+                <div class="monitor-card">
+                    <div class="monitor-icon" style="--accent: #8b5cf6;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div class="monitor-info">
+                        <span class="monitor-label">Watchdog</span>
+                        <span class="monitor-value" id="monitorWatchdog">Active</span>
+                    </div>
+                </div>
+            </div>
 
-            <section class="card locations-section">
-                <h2>2. Select Locations</h2>
-                <p class="subtitle">Choose the Surfshark nodes you want to activate for this core.</p>
-                <div class="locations-toolbar" style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
-                    <input type="text" id="locationSearch" placeholder="Search locations..." style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-                    <button type="button" id="selectNonTor" style="padding: 8px 12px; font-size: 0.9em; background: var(--surface-color); border: 1px solid var(--primary-color); color: var(--text-color); border-radius: 4px; cursor: pointer;">Select Non-Tor</button>
-                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                        <input type="checkbox" id="selectAllLocations">
-                        <span>Select All</span>
-                    </label>
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Quick Actions</h2>
+                </div>
+                <div class="quick-actions">
+                    <button class="action-btn action-inject" id="quickInjectBtn" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        <span>Inject</span>
+                    </button>
+                    <button class="action-btn action-restart" id="restartServiceBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        <span>Restart</span>
+                    </button>
+                    <button class="action-btn action-stop" id="stopServiceBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                        <span>Stop</span>
+                    </button>
+                    <button class="action-btn action-group" id="quickCreateGroupBtn" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <span>Create Group</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Inline Log Preview -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Live Logs</h2>
+                    <button class="chip-btn" id="fetchLogsBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Refresh
+                    </button>
+                </div>
+                <div class="log-console" id="logConsole">Logs will appear here...</div>
+            </div>
+        </section>
+
+        <!-- SECTION: Settings -->
+        <section class="content-section" id="sec-settings">
+            <div class="section-header">
+                <h1>Settings</h1>
+                <p class="section-subtitle">Configure your PasarGuard API connection and WireGuard keys</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>PasarGuard API</h2></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pasarguardUrl">Panel URL</label>
+                        <input type="text" id="pasarguardUrl" placeholder="http://127.0.0.1:8000" value="http://127.0.0.1:8000">
+                    </div>
+                    <div class="form-group">
+                        <label for="pasarguardToken">Admin API Token</label>
+                        <input type="password" id="pasarguardToken" placeholder="Enter your PasarGuard Admin Token">
+                    </div>
+                </div>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="isLocal" checked>
+                    <span class="checkmark"></span>
+                    PasarGuard is on this server (Local)
+                </label>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>WireGuard Key Pairs</h2>
+                    <button class="chip-btn" id="addKeyPairBtn">+ Add Key</button>
+                </div>
+                <div id="keyPairsContainer"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Core & Template</h2></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="coreSelector">Target Core</label>
+                        <select id="coreSelector" disabled>
+                            <option value="">Loading Cores...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inboundSelector">Template Inbound</label>
+                        <select id="inboundSelector" disabled>
+                            <option value="">Select a Core First...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: Locations -->
+        <section class="content-section" id="sec-locations">
+            <div class="section-header">
+                <h1>Locations</h1>
+                <p class="section-subtitle">Select Surfshark WireGuard endpoints to activate</p>
+            </div>
+
+            <div class="card">
+                <div class="locations-toolbar">
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="locationSearch" placeholder="Search locations...">
+                    </div>
+                    <div class="toolbar-actions">
+                        <button class="chip-btn" id="selectNonTor">Non-Tor Only</button>
+                        <label class="checkbox-label compact">
+                            <input type="checkbox" id="selectAllLocations">
+                            <span class="checkmark"></span>
+                            All
+                        </label>
+                        <span class="location-counter" id="locationCounter">0 selected</span>
+                    </div>
                 </div>
                 <div id="locationsList" class="locations-grid">
-                    <!-- Populated via JS -->
-                    <div class="loading">Loading Surfshark locations...</div>
+                    <div class="loading-indicator">
+                        <div class="spinner"></div>
+                        <span>Loading Surfshark locations...</span>
+                    </div>
                 </div>
-            </section>
-
-            <section class="card group-section">
-                <h2>3. Subscription Group Manager</h2>
-                <p class="subtitle">Create custom subscription bundles targeting the selected Node/Core.</p>
-                <div class="form-group">
-                    <label for="groupName">Group Name (e.g., VIP Bundle)</label>
-                    <input type="text" id="groupName" placeholder="Enter Group Name">
-                </div>
-            </section>
-
-            <section class="card lifecycle-section">
-                <h2>4. Manage Surfshark (Group B)</h2>
-                <p class="subtitle">Control the lifecycle of injected Group B nodes. Ensure a Core is selected above.</p>
-                <div class="lifecycle-controls" style="display: flex; gap: 10px; align-items: center;">
-                    <button id="toggleGroupBBtn" class="primary-btn" style="background: var(--text-muted);" disabled>Disable Group B</button>
-                    <button id="enableGroupBBtn" class="primary-btn" style="background: var(--success);" disabled>Enable Group B</button>
-                    <button id="cleanupGroupBBtn" class="primary-btn" style="background: var(--error, #e74c3c);" disabled>Clean Up (Delete All)</button>
-                </div>
-            </section>
-
-            <div class="action-container" style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem;">
-                <button id="injectBtn" class="primary-btn" disabled>Inject Native WireGuard</button>
-                <button id="createGroupBtn" class="primary-btn" style="background: var(--success);" disabled>Create Custom Group</button>
             </div>
-            
-            <section class="card service-section">
-                <h2>5. Wireproxy Service & Logs</h2>
-                <p class="subtitle">Monitor and control the Surfshark SOCKS5 engine (Wireproxy) unconditionally.</p>
-                <div class="service-controls" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-                    <button id="restartServiceBtn" class="primary-btn" style="background: var(--primary-color); padding: 8px 15px; font-size: 14px;">Restart Service</button>
-                    <button id="stopServiceBtn" class="primary-btn" style="background: var(--error, #e74c3c); padding: 8px 15px; font-size: 14px;">Stop Service</button>
-                    <button id="fetchLogsBtn" class="primary-btn" style="background: var(--text-muted); padding: 8px 15px; font-size: 14px;">Refresh Logs</button>
+
+            <div class="sticky-actions">
+                <button id="injectBtn" class="primary-btn btn-inject" disabled>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    Inject WireGuard
+                </button>
+                <button id="createGroupBtn" class="primary-btn btn-group" disabled>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Create Group
+                </button>
+            </div>
+
+            <!-- Group Name (shown inline) -->
+            <div class="card" style="margin-top: 1rem;">
+                <div class="card-header"><h2>Subscription Group</h2></div>
+                <div class="form-group">
+                    <label for="groupName">Group Name</label>
+                    <input type="text" id="groupName" placeholder="e.g. VIP Bundle">
                 </div>
-                <div style="background: #1e1e1e; color: #a3be8c; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; height: 250px; overflow-y: scroll; border: 1px solid #333; white-space: pre-wrap;" id="logConsole">Logs will appear here...</div>
-            </section>
-            
-            <div id="statusMessage" class="status-message hidden"></div>
-        </main>
-    </div>
+            </div>
+        </section>
+
+        <!-- SECTION: Lifecycle -->
+        <section class="content-section" id="sec-lifecycle">
+            <div class="section-header">
+                <h1>Lifecycle</h1>
+                <p class="section-subtitle">Manage the lifecycle of injected Surfshark (Group B) nodes</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Group B Controls</h2></div>
+                <p class="card-description">Enable, disable, or permanently remove all Group B configurations from the selected Core.</p>
+                <div class="lifecycle-grid">
+                    <button id="enableGroupBBtn" class="lifecycle-btn lf-enable" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <span>Enable Group B</span>
+                    </button>
+                    <button id="toggleGroupBBtn" class="lifecycle-btn lf-disable" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        <span>Disable Group B</span>
+                    </button>
+                    <button id="cleanupGroupBBtn" class="lifecycle-btn lf-destroy" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Delete All</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: Logs -->
+        <section class="content-section" id="sec-logs">
+            <div class="section-header">
+                <h1>Logs</h1>
+                <p class="section-subtitle">Monitor Wireproxy service output in real-time</p>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2>Wireproxy Output</h2>
+                    <button class="chip-btn" id="fetchLogsBtnFull">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Refresh
+                    </button>
+                </div>
+                <div class="log-console log-console-full" id="logConsoleFull">Logs will appear here...</div>
+            </div>
+        </section>
+
+        <!-- Global Status Toast -->
+        <div id="statusToast" class="status-toast"></div>
+    </main>
 
     <script src="/static/app.js"></script>
 </body>
