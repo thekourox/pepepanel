@@ -294,6 +294,55 @@ def restart_single_proxy(tag: str):
     logger.info(f"Watchdog restarted {tag} (PID {proc.pid})")
     return True
 
+def swap_proxy_endpoint(tag: str, new_endpoint: str, new_public_key: str) -> bool:
+    """Kills a proxy, rewrites its config with a NEW server endpoint, and restarts it.
+    This is used by the watchdog when a Surfshark server is permanently unreachable."""
+    import re
+    conf_path = os.path.join(CONF_DIR, f"{tag}.conf")
+    if not os.path.exists(conf_path):
+        logger.warning(f"Config for {tag} not found, cannot swap endpoint.")
+        return False
+    
+    # Kill existing process
+    pids = _load_pids()
+    pid = pids.get(tag)
+    if pid and _is_pid_alive(pid):
+        _kill_pid(pid)
+    
+    time.sleep(0.5)
+    
+    # Rewrite config with new endpoint and public key
+    try:
+        with open(conf_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        content = re.sub(r'Endpoint\s*=\s*\S+', f'Endpoint = {new_endpoint}', content)
+        content = re.sub(r'PublicKey\s*=\s*\S+', f'PublicKey = {new_public_key}', content)
+        
+        with open(conf_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+    except Exception as e:
+        logger.error(f"Failed to rewrite config for {tag}: {e}")
+        return False
+    
+    # Restart with new config
+    log_file = os.path.join(os.path.dirname(__file__), "wireproxy_out.log")
+    lf = open(log_file, "a")
+    lf.write(f"\n--- Watchdog SWAPPING endpoint for {tag} to {new_endpoint} ---\n")
+    lf.flush()
+    proc = subprocess.Popen(
+        [WIREPROXY_BIN, "-c", conf_path],
+        stdout=lf,
+        stderr=lf,
+        start_new_session=True
+    )
+    
+    pids[tag] = proc.pid
+    _save_pids(pids)
+    
+    logger.info(f"Watchdog swapped {tag} to {new_endpoint} (PID {proc.pid})")
+    return True
+
 def health_check_proxy(socks_port: int, timeout: float = 5.0) -> bool:
     """Check if a SOCKS5 proxy on the given port is alive by attempting a TCP connect."""
     try:

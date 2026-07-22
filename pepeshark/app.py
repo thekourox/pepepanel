@@ -517,6 +517,7 @@ def restore_wireproxy_configs(request: RestoreRequest, background_tasks: Backgro
         
         def _background_restore():
             import time
+            import random
             wireproxy_manager._kill_all_wireproxy()
             time.sleep(1.0) # Wait for sockets to close
             restored = 0
@@ -548,7 +549,6 @@ def restore_wireproxy_configs(request: RestoreRequest, background_tasks: Backgro
                     continue
                     
                 # Pick a random candidate for this country and remove it so we don't reuse it for the same keypair
-                import random
                 loc = random.choice(candidates)
                 candidates.remove(loc)
                 
@@ -573,7 +573,66 @@ def restore_wireproxy_configs(request: RestoreRequest, background_tasks: Backgro
                     local_port=socks_port
                 )
                 restored += 1
-                time.sleep(1.0) # Slower staggered start to prevent ratelimits
+                time.sleep(1.5) # Staggered start to prevent UDP flood / rate limits
+            
+            print(f"[Restore] All {restored} proxies started. Waiting 60s for handshakes...")
+            time.sleep(60)  # Give WireGuard time to handshake
+            
+            # === POST-RESTORE HEALTH SWEEP ===
+            print("[Restore] Running post-restore health sweep...")
+            proxies = wireproxy_manager.get_active_proxies()
+            dead_tags = []
+            alive_count = 0
+            
+            for tag, port in proxies.items():
+                if wireproxy_manager.health_check_proxy(port, timeout=8.0):
+                    alive_count += 1
+                else:
+                    dead_tags.append(tag)
+            
+            if dead_tags:
+                print(f"[Restore] {len(dead_tags)} proxies failed handshake. Swapping endpoints...")
+                
+                # Refresh clusters for swapping
+                try:
+                    req2 = urllib.request.Request('https://api.surfshark.com/v4/server/clusters', headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req2, timeout=15) as resp2:
+                        fresh_clusters = json.loads(resp2.read())
+                    fresh_by_country = {}
+                    for c in fresh_clusters:
+                        if 'pubKey' in c and 'connectionName' in c:
+                            cn = c.get("country", "").replace(" ", "")
+                            fresh_by_country.setdefault(cn, []).append(c)
+                except Exception as e:
+                    print(f"[Restore] Could not fetch clusters for swap: {e}")
+                    fresh_by_country = None
+                
+                if fresh_by_country:
+                    swapped = 0
+                    for tag in dead_tags:
+                        country = _extract_country_from_tag(tag)
+                        current_ep = _get_current_endpoint_from_config(tag)
+                        alt = _find_alternative_cluster(country, fresh_by_country, current_ep)
+                        
+                        if alt:
+                            new_ep = f"{alt['connectionName']}:51820"
+                            wireproxy_manager.swap_proxy_endpoint(tag, new_ep, alt['pubKey'])
+                            swapped += 1
+                            time.sleep(1.5)
+                    
+                    print(f"[Restore] Health sweep complete: {alive_count} alive, {swapped}/{len(dead_tags)} swapped.")
+                    
+                    # Second sweep after 30s for the newly swapped ones
+                    if swapped > 0:
+                        time.sleep(30)
+                        still_dead = 0
+                        for tag in dead_tags:
+                            port = proxies.get(tag)
+                            if port and not wireproxy_manager.health_check_proxy(port, timeout=8.0):
+                                still_dead += 1
+                        print(f"[Restore] Second check: {still_dead}/{len(dead_tags)} still failing after swap.")
+            else:
+                print(f"[Restore] All {alive_count} proxies healthy! 🎉")
 
         background_tasks.add_task(_background_restore)
         return {"status": "success", "message": f"Restoring {len(outbounds)} wireproxy instances in the background."}
@@ -731,16 +790,81 @@ def stop_all_wireproxies():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+def _fetch_surfshark_clusters():
+    """Fetch Surfshark clusters and return a dict of country -> [cluster, cluster, ...]"""
+    try:
+        req = urllib.request.Request('https://api.surfshark.com/v4/server/clusters', headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=15) as response:
+            sf_clusters = json.loads(response.read())
+        
+        clusters_by_country = {}
+        for c in sf_clusters:
+            if 'pubKey' in c and 'connectionName' in c:
+                country = c.get("country", "").replace(" ", "")
+                clusters_by_country.setdefault(country, []).append(c)
+        return clusters_by_country
+    except Exception as e:
+        print(f"[Watchdog] Failed to fetch Surfshark clusters: {e}")
+        return None
+
+def _extract_country_from_tag(tag: str) -> str:
+    """Extract country name from a tag like 'B-Out-France-XXXX' or 'SurfOut-France-XXXX'."""
+    parts = tag.split("-")
+    if len(parts) >= 3:
+        return parts[2]
+    return ""
+
+def _find_alternative_cluster(country_part: str, clusters_by_country: dict, current_endpoint: str = None):
+    """Find an alternative Surfshark cluster for the given country, avoiding current_endpoint."""
+    # Exact match
+    candidates = clusters_by_country.get(country_part, [])
+    if not candidates:
+        # Partial match
+        for cname, cls in clusters_by_country.items():
+            if country_part.lower() in cname.lower():
+                candidates = cls
+                break
+    
+    if not candidates:
+        return None
+    
+    import random
+    # Filter out the current endpoint if possible
+    if current_endpoint and len(candidates) > 1:
+        filtered = [c for c in candidates if c['connectionName'] not in current_endpoint]
+        if filtered:
+            return random.choice(filtered)
+    
+    return random.choice(candidates)
+
+def _get_current_endpoint_from_config(tag: str) -> str:
+    """Read the current Endpoint from a wireproxy config file."""
+    import re
+    conf_path = os.path.join(os.path.dirname(__file__), "wireproxy_configs", f"{tag}.conf")
+    try:
+        with open(conf_path, 'r') as f:
+            for line in f:
+                if 'Endpoint' in line and '=' in line:
+                    return line.split('=', 1)[1].strip()
+    except Exception:
+        pass
+    return ""
+
 def _watchdog_loop():
-    """Background loop: every 2 minutes, check all active proxies and restart dead ones."""
+    """Background loop: check all active proxies and self-heal dead ones by swapping endpoints."""
     import time
     INTERVAL = 120  # 2 minutes
-    MAX_CONSECUTIVE_FAILS = 2  # Restart after 2 consecutive failed checks
+    MAX_CONSECUTIVE_FAILS = 2  # Swap endpoint after 2 consecutive failed checks
     
     fail_counts = {}  # tag -> consecutive fail count
     
-    # Wait 60 seconds on first boot to let everything stabilize
-    time.sleep(60)
+    # Wait 90 seconds on first boot to let everything stabilize
+    time.sleep(90)
+    
+    # Cache clusters, refresh every 10 minutes
+    clusters_cache = None
+    last_cluster_fetch = 0
+    CLUSTER_REFRESH_INTERVAL = 600  # 10 minutes
     
     while True:
         try:
@@ -750,8 +874,15 @@ def _watchdog_loop():
                 time.sleep(INTERVAL)
                 continue
             
+            # Refresh Surfshark clusters if needed
+            now = time.time()
+            if clusters_cache is None or (now - last_cluster_fetch) > CLUSTER_REFRESH_INTERVAL:
+                clusters_cache = _fetch_surfshark_clusters()
+                last_cluster_fetch = now
+            
             dead_count = 0
             alive_count = 0
+            swapped_count = 0
             
             for tag, port in proxies.items():
                 is_alive = wireproxy_manager.health_check_proxy(port)
@@ -763,14 +894,35 @@ def _watchdog_loop():
                     fail_counts[tag] = fail_counts.get(tag, 0) + 1
                     
                     if fail_counts[tag] >= MAX_CONSECUTIVE_FAILS:
-                        print(f"[Watchdog] {tag} (port {port}) dead for {fail_counts[tag]} checks. Restarting...")
-                        wireproxy_manager.restart_single_proxy(tag)
-                        fail_counts[tag] = 0  # Reset after restart
-                        dead_count += 1
-                        time.sleep(1)  # Small gap between restarts
+                        country = _extract_country_from_tag(tag)
+                        current_ep = _get_current_endpoint_from_config(tag)
+                        
+                        if clusters_cache and country:
+                            # Try to find an ALTERNATIVE server for the same country
+                            alt = _find_alternative_cluster(country, clusters_cache, current_ep)
+                            if alt:
+                                new_ep = f"{alt['connectionName']}:51820"
+                                new_pk = alt['pubKey']
+                                print(f"[Watchdog] {tag} dead for {fail_counts[tag]} checks. SWAPPING to {alt['connectionName']}")
+                                wireproxy_manager.swap_proxy_endpoint(tag, new_ep, new_pk)
+                                swapped_count += 1
+                            else:
+                                # No alternative found, just restart
+                                print(f"[Watchdog] {tag} dead, no alternative server found. Restarting as-is.")
+                                wireproxy_manager.restart_single_proxy(tag)
+                                dead_count += 1
+                        else:
+                            # No cluster data available, just restart
+                            print(f"[Watchdog] {tag} dead, no cluster data. Restarting as-is.")
+                            wireproxy_manager.restart_single_proxy(tag)
+                            dead_count += 1
+                        
+                        fail_counts[tag] = 0  # Reset after action
+                        time.sleep(1.5)  # Gap between swaps to avoid rate limiting
             
-            if dead_count > 0:
-                print(f"[Watchdog] Cycle complete: {alive_count} alive, {dead_count} restarted.")
+            total = alive_count + dead_count + swapped_count
+            if dead_count > 0 or swapped_count > 0:
+                print(f"[Watchdog] Cycle: {alive_count}/{total} alive, {swapped_count} swapped, {dead_count} restarted.")
                 
         except Exception as e:
             print(f"[Watchdog] Error during health check cycle: {e}")
@@ -780,3 +932,4 @@ def _watchdog_loop():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8088)
+
