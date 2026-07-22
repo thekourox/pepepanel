@@ -3,15 +3,41 @@ import json
 import uuid
 import urllib.request
 import httpx
+import math
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 import wireproxy_manager
+import threading
 
-app = FastAPI(title="Pasargard VPN Automator")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    def _recovery_thread():
+        try:
+            print("Auto-recovering wireproxies on startup...")
+            wireproxy_manager.recover_all_proxies()
+        except Exception as e:
+            print(f"Failed to auto-recover wireproxies: {e}")
+            
+    # Run recovery in background so it doesn't block FastAPI startup
+    threading.Thread(target=_recovery_thread, daemon=True).start()
+    
+    watchdog_thread = threading.Thread(target=_watchdog_loop, daemon=True)
+    watchdog_thread.start()
+    print("Surfshark Watchdog started (checking every 2 minutes).")
+    
+    yield
+    
+    # Shutdown
+    print("Shutting down... killing all wireproxy instances gracefully.")
+    wireproxy_manager._kill_all_wireproxy()
+
+app = FastAPI(title="Pasargard VPN Automator", lifespan=lifespan)
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
@@ -53,6 +79,10 @@ class LifecycleToggleRequest(BaseModel):
 
 class LifecycleCleanupRequest(BaseModel):
     core_id: str
+
+class RestoreRequest(BaseModel):
+    key_pairs: List[KeyPair]
+    core_data: dict
 
 INJECTION_STATE_FILE = os.path.join(os.path.dirname(__file__), "injection_state.json")
 
@@ -287,6 +317,11 @@ async def inject_to_pasargard(
             
             host_payloads = []
             
+            # Wipe all existing wireproxy processes to ensure a clean slate and prevent port conflicts
+            wireproxy_manager._kill_all_wireproxy()
+            import time
+            time.sleep(1.0) # Wait for UDP sockets to be released
+            
             for i, loc in enumerate(request.locations):
                 # Calculate which Key Pair to use for this location
                 current_key_idx = i // locations_per_key
@@ -331,8 +366,7 @@ async def inject_to_pasargard(
                     this_port = next_port
                     next_port += 1
                     is_new = True
-                # Kill existing proxy if it's running to prevent port conflicts and zombies
-                wireproxy_manager.stop_surfshark_proxies([outbound_tag])
+                # (Legacy stop method removed since we now kill all processes upfront)
                 
                 # Start wireproxy SOCKS5 process locally
                 wireproxy_manager.start_wireproxy(
@@ -451,6 +485,100 @@ async def inject_to_pasargard(
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PasarGuard API Error: {str(e)}")
+
+from fastapi import BackgroundTasks
+
+@app.post("/api/surfshark/restore")
+def restore_wireproxy_configs(request: RestoreRequest, background_tasks: BackgroundTasks):
+    """Rebuilds wireproxy configs directly from the core Xray config without mutating PasarGuard DB."""
+    try:
+        # 1. Fetch live Surfshark endpoints for matching
+        req = urllib.request.Request('https://api.surfshark.com/v4/server/clusters', headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            sf_clusters = json.loads(response.read())
+            
+        # Create a lookup map: country -> list of clusters
+        # Country names in our tags are clean_country(country), we need to reverse match loosely
+        clusters_by_country = {}
+        for c in sf_clusters:
+            if 'pubKey' in c and 'connectionName' in c:
+                country = c.get("country", "").replace(" ", "")
+                clusters_by_country.setdefault(country, []).append(c)
+                
+        # 2. Iterate Xray Outbounds
+        xray_config = request.core_data.get("config", {})
+        outbounds = [ob for ob in xray_config.get("outbounds", []) if ob.get("tag", "").startswith("B-Out-") or ob.get("tag", "").startswith("SurfOut-")]
+        
+        num_keys = len(request.key_pairs)
+        if num_keys == 0:
+            raise HTTPException(status_code=400, detail="No key pairs provided.")
+            
+        locations_per_key = math.ceil(len(outbounds) / num_keys) if outbounds else 1
+        
+        def _background_restore():
+            import time
+            wireproxy_manager._kill_all_wireproxy()
+            time.sleep(1.0) # Wait for sockets to close
+            restored = 0
+            for i, ob in enumerate(outbounds):
+                tag = ob.get("tag", "")
+                # Extract Country from tag (e.g. B-Out-France-XXXX)
+                parts = tag.split("-")
+                if len(parts) >= 3:
+                    country_part = parts[2]
+                else:
+                    country_part = "US" # fallback
+                    
+                # Find a matching cluster
+                candidates = clusters_by_country.get(country_part)
+                if not candidates:
+                    # Try partial match
+                    for cname, cls in clusters_by_country.items():
+                        if country_part.lower() in cname.lower():
+                            candidates = cls
+                            break
+                
+                if not candidates:
+                    # If still no match, just pick any valid endpoint to not break the proxy
+                    for cls in clusters_by_country.values():
+                        candidates = cls
+                        break
+                        
+                if not candidates:
+                    continue
+                    
+                # Pick a random candidate for this country and remove it so we don't reuse it for the same keypair
+                import random
+                loc = random.choice(candidates)
+                candidates.remove(loc)
+                
+                # Find SOCKS port
+                try:
+                    socks_port = int(ob["settings"]["servers"][0]["port"])
+                except (KeyError, IndexError, ValueError):
+                    continue
+                    
+                # Select key pair identically to inject
+                kp = request.key_pairs[i // locations_per_key]
+                clean_wg_address = kp.wg_address.split('/')[0] + "/32"
+                
+                
+                # Recreate config and start wireproxy!
+                wireproxy_manager.start_wireproxy(
+                    tag=tag,
+                    private_key=kp.private_key,
+                    wg_address=clean_wg_address,
+                    endpoint=f"{loc['connectionName']}:51820",
+                    public_key=loc['pubKey'],
+                    local_port=socks_port
+                )
+                restored += 1
+                time.sleep(1.0) # Slower staggered start to prevent ratelimits
+
+        background_tasks.add_task(_background_restore)
+        return {"status": "success", "message": f"Restoring {len(outbounds)} wireproxy instances in the background."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Restore Error: {str(e)}")
 
 @app.post("/api/pasargard/lifecycle/toggle")
 async def toggle_group_b(
@@ -598,25 +726,10 @@ def restart_all_wireproxies():
 @app.post("/api/wireproxy/stop")
 def stop_all_wireproxies():
     try:
-        import subprocess
-        subprocess.run("pkill -f 'wireproxy -c' || killall wireproxy || true", shell=True, check=False)
+        wireproxy_manager._kill_all_wireproxy()
         return {"status": "success", "message": "All Wireproxy instances stopped."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
-@app.on_event("startup")
-def startup_event():
-    try:
-        print("Auto-recovering wireproxies on startup...")
-        wireproxy_manager.recover_all_proxies()
-    except Exception as e:
-        print(f"Failed to auto-recover wireproxies: {e}")
-    
-    # Start Watchdog background thread
-    import threading
-    watchdog_thread = threading.Thread(target=_watchdog_loop, daemon=True)
-    watchdog_thread.start()
-    print("Surfshark Watchdog started (checking every 2 minutes).")
 
 def _watchdog_loop():
     """Background loop: every 2 minutes, check all active proxies and restart dead ones."""

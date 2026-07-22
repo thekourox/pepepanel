@@ -326,9 +326,56 @@ document.addEventListener('DOMContentLoaded', () => {
         const toggleBtn = document.getElementById('toggleGroupBBtn');
         const enableBtn = document.getElementById('enableGroupBBtn');
         const cleanupBtn = document.getElementById('cleanupGroupBBtn');
+        const restoreBtn = document.getElementById('restoreEngineBtn');
         if (toggleBtn) toggleBtn.disabled = !hasCore;
         if (enableBtn) enableBtn.disabled = !hasCore;
         if (cleanupBtn) cleanupBtn.disabled = !hasCore;
+        if (restoreBtn) restoreBtn.disabled = !hasCore || validKeyPairs.length === 0;
+    }
+
+    // ============ Restore Configs (Safe) ============
+    const restoreEngineBtn = document.getElementById('restoreEngineBtn');
+    if (restoreEngineBtn) {
+        restoreEngineBtn.addEventListener('click', async () => {
+            if (!coreSelector.value) return showStatus('Please select a Core first', 'error');
+            const validKeyPairs = getValidKeyPairs();
+            if (validKeyPairs.length === 0) return showStatus('Please add at least one WireGuard key pair', 'error');
+
+            const origText = restoreEngineBtn.textContent;
+            restoreEngineBtn.disabled = true;
+            restoreEngineBtn.innerHTML = '<div class="spinner" style="width:14px;height:14px;margin-right:8px;"></div> Restoring...';
+
+            try {
+                // Fetch Core Data directly from panel
+                const coreResp = await fetch(`${pasarguardUrlInput.value.replace(/\/$/, '')}/api/core/${coreSelector.value}`, {
+                    headers: { 'Authorization': `Bearer ${pasarguardTokenInput.value}` }
+                });
+                if (!coreResp.ok) throw new Error('Failed to fetch Core config from PasarGuard');
+                const coreData = await coreResp.json();
+
+                // Send to backend restore endpoint
+                const restoreResp = await fetch('/api/surfshark/restore', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key_pairs: validKeyPairs,
+                        core_data: coreData
+                    })
+                });
+                const result = await restoreResp.json();
+                if (restoreResp.ok) {
+                    showStatus(result.message || 'Restored wireproxy configs successfully!', 'success');
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    showStatus(result.detail || 'Restore failed', 'error');
+                }
+            } catch (e) {
+                showStatus(e.message || 'Network error', 'error');
+            } finally {
+                restoreEngineBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>Restore Wireproxy Configs</span>`;
+                restoreEngineBtn.disabled = false;
+            }
+        });
     }
 
     // ============ Inject (with re-inject guard) ============
