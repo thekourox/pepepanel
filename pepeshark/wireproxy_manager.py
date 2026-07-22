@@ -143,17 +143,20 @@ def start_wireproxy(tag: str, private_key: str, wg_address: str, endpoint: str, 
     conf_path = os.path.join(CONF_DIR, f"{tag}.conf")
     
     # Wireproxy config structure
+    # NOTE: ListenPort is intentionally OMITTED so the OS assigns a random
+    # ephemeral UDP port (49152-65535) for each instance.  This prevents
+    # Linux conntrack from confusing response packets between 142 sequential
+    # UDP ports, which was the root cause of "Received packet with invalid mac1".
     config_content = f"""[Interface]
 Address = {wg_address}
 PrivateKey = {private_key}
-ListenPort = {local_port + 10000}
 MTU = 1280
 
 [Peer]
 PublicKey = {public_key}
 Endpoint = {endpoint}
 AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 15
+PersistentKeepalive = 25
 
 [Socks5]
 BindAddress = 0.0.0.0:{local_port}
@@ -230,18 +233,15 @@ def recover_all_proxies():
     for conf_path in configs:
         tag = os.path.splitext(os.path.basename(conf_path))[0]
         
-        # --- Patch config with ListenPort if missing (Fixes Handshake Timouts) ---
+        # --- Strip ListenPort from old configs to let OS assign random ephemeral ports ---
+        # This fixes "Received packet with invalid mac1" caused by conntrack confusion
         try:
             with open(conf_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            if 'ListenPort' not in content:
-                port_match = re.search(r'BindAddress\s*=\s*.*?[:](\d+)', content)
-                if port_match:
-                    socks_port = int(port_match.group(1))
-                    listen_port = socks_port + 10000
-                    content = content.replace('[Interface]', f'[Interface]\nListenPort = {listen_port}')
-                    with open(conf_path, 'w', encoding='utf-8') as f:
-                        f.write(content)
+            if 'ListenPort' in content:
+                content = re.sub(r'\nListenPort\s*=\s*\d+', '', content)
+                with open(conf_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
         except Exception as e:
             logger.error(f"Failed to patch {conf_path}: {e}")
         # -------------------------------------------------------------------------
